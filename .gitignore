@@ -113,5 +113,3 @@ log/
 # debug
 *copy*
 .vscode/
-output_csv/
-*.ulg

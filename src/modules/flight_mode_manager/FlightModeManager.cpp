@@ -136,6 +136,9 @@ void FlightModeManager::updateParams()
 
 void FlightModeManager::start_flight_task()
 {
+// PX4_ERR("_vehicle_status_sub.get().nav_state %d" PRIu32,_vehicle_status_sub.get().nav_state);
+// PX4_ERR("_param_mpc_pos_mode.get() %d" PRIu32,_param_mpc_pos_mode.get());
+
 	// Do not run any flight task for VTOLs in fixed-wing mode
 	if (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
 		switchTask(FlightTaskIndex::None);
@@ -167,7 +170,7 @@ void FlightModeManager::start_flight_task()
 			task_failure = true;
 		}
 	}
-
+// PX4_ERR("task_failure000 %d" PRIu32,task_failure);
 	// Orbit
 	if ((_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_ORBIT)
 	    && !_command_failed) {
@@ -183,7 +186,7 @@ void FlightModeManager::start_flight_task()
 			task_failure = true;
 		}
 	}
-
+// PX4_ERR("task_failure111 %d" PRIu32,task_failure);
 	// Navigator interface for autonomous modes
 	if (_vehicle_control_mode_sub.get().flag_control_auto_enabled
 	    && !nav_state_descend) {
@@ -194,11 +197,13 @@ void FlightModeManager::start_flight_task()
 			task_failure = true;
 		}
 	}
-
+// PX4_ERR("task_failure222 %d" PRIu32,task_failure);
 	// Manual position control
 	if ((_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_POSCTL) || task_failure) {
 		found_some_task = true;
 		FlightTaskError error = FlightTaskError::NoError;
+// PX4_ERR("========_vehicle_status_sub.get().nav_state %d" PRIu32,_vehicle_status_sub.get().nav_state);
+// PX4_ERR("========_param_mpc_pos_mode.get() %d" PRIu32,_param_mpc_pos_mode.get());
 
 		switch (_param_mpc_pos_mode.get()) {
 		case 0:
@@ -224,12 +229,15 @@ void FlightModeManager::start_flight_task()
 		task_failure = (error != FlightTaskError::NoError);
 		matching_task_running = matching_task_running && !task_failure;
 	}
-
-	// Manual altitude control
+// PX4_ERR("task_failure333 %d" PRIu32,task_failure);
+	// Manual altitude control  task_failure了然后_param_mpc_pos_mode.get()=4  switchTask  ManualAltitudeSmoothVel
 	if ((_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_ALTCTL) || task_failure) {
 		found_some_task = true;
 		FlightTaskError error = FlightTaskError::NoError;
-
+// PX4_ERR("vehicle_status_s::NAVIGATION_STATE_POSCTL %d" PRIu32,vehicle_status_s::NAVIGATION_STATE_POSCTL);
+// PX4_ERR("vehicle_status_s::NAVIGATION_STATE_ALTCTL %d" PRIu32,vehicle_status_s::NAVIGATION_STATE_ALTCTL);
+// PX4_ERR("_vehicle_status_sub.get().nav_state %d" PRIu32,_vehicle_status_sub.get().nav_state);
+// PX4_ERR("_param_mpc_pos_mode.get() %d" PRIu32,_param_mpc_pos_mode.get());
 		switch (_param_mpc_pos_mode.get()) {
 		case 0:
 			error = switchTask(FlightTaskIndex::ManualAltitude);

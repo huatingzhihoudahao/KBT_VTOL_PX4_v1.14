@@ -1,0 +1,69 @@
+# 编译输出
+*.o
+*.out
+*.obj
+*.app
+*.exe
+
+# 编译器生成的文件夹
+debug/
+release/
+Debug/
+Release/
+build/
+build-[target]/
+
+# 编译生成的二进制文件
+*.bin
+*.dll
+*.so
+*.dylib
+
+# 依赖库的文件夹
+lib/
+libs/
+vendor/
+vendors/
+
+# 编译过程中生成的文件
+CMakeFiles/
+CMakeCache.txt
+CMakeScripts/
+CMakeScripts-[target]/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+Makefile-[target]
+
+# 自动生成的文件
+compile_commands.json
+compile_commands-[target].json
+tags
+*.tags
+cscope.*
+cscope-[target].out
+
+# IDEA相关文件
+.idea/
+
+# Visual Studio相关文件
+.vscode/
+*.suo
+*.user
+*.user.props
+*.sln.docstates
+
+# Xcode相关文件
+*.xcodeproj/
+*.xcworkspace/
+
+# 编辑器临时文件
+*~
+
+# 已编译的Object文件
+**.slo
+**.lo
+**.o
+**.obj
+
+# 自定义规则（添加你自己的规则在这里）

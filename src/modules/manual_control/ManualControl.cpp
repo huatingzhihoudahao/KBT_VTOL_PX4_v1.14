@@ -220,6 +220,7 @@ void ManualControl::Run()
 						if (switches.offboard_switch == manual_control_switches_s::SWITCH_POS_ON) {
 							sendActionRequest(action_request_s::ACTION_SWITCH_MODE, action_request_s::SOURCE_RC_SWITCH,
 									  vehicle_status_s::NAVIGATION_STATE_OFFBOARD);
+						PX4_ERR("sendActionRequest,NAVIGATION_STATE_OFFBOARD");
 
 						} else if (switches.offboard_switch == manual_control_switches_s::SWITCH_POS_OFF) {
 							evaluateModeSlot(switches.mode_slot);

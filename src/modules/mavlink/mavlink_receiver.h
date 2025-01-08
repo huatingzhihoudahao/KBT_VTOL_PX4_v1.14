@@ -50,7 +50,7 @@
 #include "MavlinkStatustextHandler.hpp"
 #include "mavlink_timesync.h"
 #include "tune_publisher.h"
-
+#include <uORB/topics/vehicle_control_mode.h>
 #include <geo/geo.h>
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
@@ -110,6 +110,9 @@
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_trajectory_bezier.h>
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
+
+#include <uORB/topics/vehicle_thrust_acc_setpoint.h>
+
 
 #if !defined(CONSTRAINED_FLASH)
 # include <uORB/topics/debug_array.h>
@@ -201,6 +204,12 @@ private:
 	void handle_message_gimbal_manager_set_manual_control(mavlink_message_t *msg);
 	void handle_message_gimbal_device_information(mavlink_message_t *msg);
 	void handle_message_gimbal_device_attitude_status(mavlink_message_t *msg);
+//改了
+	void handle_message_at_w_setpt(mavlink_message_t *msg);
+	orb_advert_t at_w_setpt_pub{nullptr};
+
+	void handle_message_offboard_heartbeat(mavlink_message_t *msg);
+	// orb_advert_t _offboard_control_mode_pub{nullptr};//后面有了？
 
 #if !defined(CONSTRAINED_FLASH)
 	void handle_message_debug(mavlink_message_t *msg);
@@ -304,6 +313,10 @@ private:
 	uORB::Publication<mavlink_tunnel_s>			_mavlink_tunnel_pub{ORB_ID(mavlink_tunnel)};
 	uORB::Publication<obstacle_distance_s>			_obstacle_distance_pub{ORB_ID(obstacle_distance)};
 	uORB::Publication<offboard_control_mode_s>		_offboard_control_mode_pub{ORB_ID(offboard_control_mode)};
+
+	uORB::Publication<vehicle_control_mode_s>		_vehicle_control_mode_pub{ORB_ID(vehicle_control_mode)};
+  	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
+
 	uORB::Publication<onboard_computer_status_s>		_onboard_computer_status_pub{ORB_ID(onboard_computer_status)};
 	uORB::Publication<generator_status_s>			_generator_status_pub{ORB_ID(generator_status)};
 	uORB::Publication<vehicle_attitude_s>			_attitude_pub{ORB_ID(vehicle_attitude)};

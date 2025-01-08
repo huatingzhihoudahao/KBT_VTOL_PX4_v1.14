@@ -273,7 +273,13 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 	case MAVLINK_MSG_ID_STATUSTEXT:
 		handle_message_statustext(msg);
 		break;
-
+//改了
+	case MAVLINK_MSG_ID_AT_W_SETPT:
+		handle_message_at_w_setpt(msg);
+		break;
+	case MAVLINK_MSG_ID_OFFBOARD_HEARTBEAT:
+		handle_message_offboard_heartbeat(msg);
+		break;
 #if !defined(CONSTRAINED_FLASH)
 
 	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
@@ -386,6 +392,57 @@ MavlinkReceiver::evaluate_target_ok(int command, int target_system, int target_c
 
 	return target_ok;
 }
+void
+MavlinkReceiver::handle_message_at_w_setpt(mavlink_message_t *msg)
+{
+    mavlink_at_w_setpt_t man;
+    mavlink_msg_at_w_setpt_decode(msg, &man);
+
+struct vehicle_thrust_acc_setpoint_s at_w_setpt = {};
+
+    at_w_setpt.timestamp = hrt_absolute_time();
+    at_w_setpt.thrust_acc_sp = man.thrust_acc_sp;
+	at_w_setpt.rates_sp[0]=man.rates_sp_1;
+	at_w_setpt.rates_sp[1]=man.rates_sp_2;
+	at_w_setpt.rates_sp[2]=man.rates_sp_3;
+	at_w_setpt.model_ff=man.model_ff;
+// PX4_WARN("handle_message  %f  %f  %f %f",(double)at_w_setpt.rates_sp[0],(double)at_w_setpt.rates_sp[1],(double)at_w_setpt.rates_sp[2],(double)at_w_setpt.model_ff);
+	// PX4_ERR("at_w_setpt.thrust_acc_sp  %f" ,(double)at_w_setpt.thrust_acc_sp);
+    if (at_w_setpt_pub == nullptr) {
+        at_w_setpt_pub = orb_advertise(ORB_ID(vehicle_thrust_acc_setpoint), &at_w_setpt);
+
+    } else {
+        orb_publish(ORB_ID(vehicle_thrust_acc_setpoint), at_w_setpt_pub, &at_w_setpt);
+    }
+}
+
+void
+MavlinkReceiver::handle_message_offboard_heartbeat(mavlink_message_t *msg)
+{
+    mavlink_offboard_heartbeat_t man;
+    mavlink_msg_offboard_heartbeat_decode(msg, &man);
+
+struct offboard_control_mode_s offboard_heartbeat{};
+	offboard_heartbeat.position = man.position;
+    offboard_heartbeat.velocity = false;
+	offboard_heartbeat.acceleration = false;
+    offboard_heartbeat.attitude = false;
+	offboard_heartbeat.body_rate = man.body_rate;
+	offboard_heartbeat.timestamp = hrt_absolute_time();
+	_offboard_control_mode_pub.publish(offboard_heartbeat);
+
+	vehicle_control_mode_s control_mode_now{};
+	_vehicle_control_mode_sub.update(&control_mode_now);
+	control_mode_now.flag_control_attitude_enabled=0;
+	_vehicle_control_mode_pub.publish(control_mode_now);
+    // if (_offboard_control_mode_pub == nullptr) {
+    //     _offboard_control_mode_pub = orb_advertise(ORB_ID(offboard_control_mode), &offboard_heartbeat);
+
+    // } else {
+    //     orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &offboard_heartbeat);
+    // }
+}
+
 
 void
 MavlinkReceiver::handle_message_command_long(mavlink_message_t *msg)
@@ -1532,6 +1589,7 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 			ocm.attitude = attitude;
 			ocm.body_rate = body_rates;
 			ocm.timestamp = hrt_absolute_time();
+			// PX4_WARN("!!!offboard_control_mode %f  %f %f  %f  %f",(double)ocm.position,(double)ocm.velocity,(double)ocm.acceleration,(double)ocm.attitude,(double)ocm.body_rate);
 			_offboard_control_mode_pub.publish(ocm);
 		}
 
@@ -1589,9 +1647,11 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 				fill_thrust(setpoint.thrust_body, vehicle_status.vehicle_type, attitude_target.thrust);
 			}
 
+	// PX4_WARN("mavlink  %f  %f  %f %f",(double)setpoint.roll,(double)setpoint.pitch,(double)setpoint.yaw,(double)setpoint.thrust_body[2]);
 			// Publish rate setpoint only once in OFFBOARD
 			if (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD) {
 				setpoint.timestamp = hrt_absolute_time();
+
 				_rates_sp_pub.publish(setpoint);
 			}
 		}

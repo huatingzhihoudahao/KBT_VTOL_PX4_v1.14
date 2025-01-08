@@ -77,6 +77,19 @@ mc_pos_control start
 
 #
 # Start Multicopter Land Detector.
-#
+#。。。
+param set THR_P 0.001f
+param set THR_PP 0.00001f
+param set THR_BETA 0.0f
+param set THR_SFT_RATE  4.5f
+param set THR_SFT_ACC   3.5f
+
+param set MC_PITCHRATE_K 1.0f
+param set MC_PITCHRATE_P 0.5f
+param set MC_PITCHRATE_I 0.0f
+param set MC_PITCHRATE_D 0.02f
+param set THR_SFT_ACC   3.5f
+
+
 land_detector start multicopter
-thrust_acc_control start
+thrust_acc_control start 

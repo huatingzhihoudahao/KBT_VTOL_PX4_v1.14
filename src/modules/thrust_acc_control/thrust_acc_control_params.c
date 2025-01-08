@@ -43,7 +43,7 @@
  *
  * [at_sp - hat(at)] * K * (P+I*1/s+D*s) + thrust_ff = Thrust_setpoint
  *
- * @min 0.001
+ * @min 0.0001
  * @max 0.008
  * @decimal 3
  * @increment 0.01
@@ -51,6 +51,18 @@
  */
 PARAM_DEFINE_FLOAT(THR_P, 0.005f);
 
+// /**
+//  * thrust accleration error PP gain
+//  *
+//  * thrust accleration error PP gain
+//  *
+//  * @min 0.00001
+//  * @max 0.008
+//  * @decimal 3
+//  * @increment 0.01
+//  * @group Multicopter Rate Control
+//  */
+PARAM_DEFINE_FLOAT(THR_PP, 0.0f);
 
 /**
  * thrust setpoint low pass filter cutoff frequency 
@@ -127,25 +139,25 @@ PARAM_DEFINE_FLOAT(THR_TMO_ACC, 9.81f);
  * thrust contrl Max acc when mpc is running
  *
  * @min 1.0
- * @max 5.0
+ * @max 15.0
  * @decimal 3
  * @increment 0.01
  * @group Multicopter Rate Control
  */
-PARAM_DEFINE_FLOAT(THR_SFT_ACC, 3.0f);
+PARAM_DEFINE_FLOAT(THR_SFT_ACC, 3.5f);
 
 /**
  * thrust contrl Max rate when mpc is running
  *
  * thrust contrl Max rate when mpc is running
  *
- * @min 1.5
- * @max 3.0
+ * @min 0.5
+ * @max 14.5  
  * @decimal 3
  * @increment 0.01
  * @group Multicopter Rate Control
  */
-PARAM_DEFINE_FLOAT(THR_SFT_RATE, 2.5f);
+PARAM_DEFINE_FLOAT(THR_SFT_RATE, 4.5f);
 
 
 /**
@@ -157,7 +169,7 @@ PARAM_DEFINE_FLOAT(THR_SFT_RATE, 2.5f);
  * @max 10
  * @group Multicopter Rate Control
  */
-PARAM_DEFINE_INT32(THR_TMO_TIME, 5);
+PARAM_DEFINE_INT32(THR_TMO_TIME, 2);
 
 
 

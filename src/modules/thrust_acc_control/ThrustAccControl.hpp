@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 #pragma once
-
+#include <uORB/topics/offboard_control_mode.h>
 #include <lib/adv_control_lib/butterworth_filter.h>
 #include <lib/perf/perf_counter.h>
 #include <lib/systemlib/mavlink_log.h>
@@ -50,11 +50,8 @@
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/topics/vehicle_thrust_acc_setpoint.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
 
-#include <AttitudeControl.hpp>
-#include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/matrix/matrix/math.hpp>
 #include <lib/rate_control/rate_control.hpp>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
@@ -62,6 +59,12 @@
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
+// #include <uORB/topics/vehicle_
+// #include <uORB/topics/vehithrus
+#include <uORB/topics/vehicle_thrust_acc_setpoint.h>
+
+#include <AttitudeControl.hpp>
+
 // #include <uORB/topics/vehilce_thrust_acc_setpoint.h>
 using namespace time_literals;
 
@@ -85,7 +88,7 @@ class ThrustAccControl : public ModuleBase<ThrustAccControl>,
 
  private:
   void Run() override;
-  void resetFilters();
+  void resetButterworthFilter();
   bool safeCheck();
   void safeAttitudeHolder();
   /**
@@ -117,6 +120,10 @@ class ThrustAccControl : public ModuleBase<ThrustAccControl>,
 
   uORB::Publication<vehicle_rates_setpoint_s> _vehicle_rates_setpoint_pub{
       ORB_ID(vehicle_rates_setpoint)};
+
+uORB::SubscriptionData<offboard_control_mode_s>		_offboard_control_mode_sub{ORB_ID(offboard_control_mode)};
+uORB::Publication<offboard_control_mode_s>		_offboard_control_mode_pub{ORB_ID(offboard_control_mode)};
+
   orb_advert_t _mavlink_log_pub{nullptr};  ///< mavlink log pub
                                            //   RateControl _rate_control;
   vehicle_control_mode_s _vehicle_control_mode{};
@@ -129,6 +136,7 @@ class ThrustAccControl : public ModuleBase<ThrustAccControl>,
 
   // keep setpoint values between updates
   matrix::Vector3f _rates_setpoint{};
+  matrix::Vector3f last_rates_setpoint{};
   vehicle_thrust_acc_setpoint_s _thrust_acc_setpoint_msg;
   math::LowPassFilter2p<float> _thrust_sp_lpf{};
   float _u_prev = 0.0;
@@ -136,7 +144,7 @@ class ThrustAccControl : public ModuleBase<ThrustAccControl>,
   float _a_curr;
   float _thrust_acc_sp{};
   matrix::Quaternionf _rotate_q{};
-  float _thr_p;
+  float _thr_p,_thr_pp;
   float _beta;
   float _thr_model_ff;
   // we assumes the model of thrust is quadratic, i.e. a_t = a*u
@@ -148,12 +156,10 @@ class ThrustAccControl : public ModuleBase<ThrustAccControl>,
   bool _is_sim = false;
   bool _can_run_offboard = false;
   bool _last_can_run = false;
-  bool _safety_check = true;
-  //   uint64
+
   float _acc_limit;
   float _rate_limit;
-  AlphaFilter<float> _rate_sft_filter;
-  AlphaFilter<float> _acc_sft_filter;
+
   AttitudeControl _attitude_control;
 
   DEFINE_PARAMETERS(
@@ -166,9 +172,10 @@ class ThrustAccControl : public ModuleBase<ThrustAccControl>,
       (ParamFloat<px4::params::MC_YAWRATE_MAX>)_param_mc_yawrate_max,
 
       (ParamFloat<px4::params::THR_P>)_param_thr_p,
+      (ParamFloat<px4::params::THR_PP>)_param_thr_PP,
+      
       (ParamFloat<px4::params::THR_TMO_ACC>)_param_thr_timeout_acc,
       (ParamFloat<px4::params::GYROX_CUTOFF>)_param_imu_gyro_cutoff,
-      (ParamInt<px4::params::IMU_GYRO_RATEMAX>)_param_imu_gyro_rate_max,
       (ParamFloat<px4::params::THR_DELTA_BOUND>)_param_delta_thr_bound,
       (ParamFloat<px4::params::THR_LPF_CUTOFF>)_param_thr_lpf_cutoff_frq,
       (ParamFloat<px4::params::THR_BETA>)_param_beta,

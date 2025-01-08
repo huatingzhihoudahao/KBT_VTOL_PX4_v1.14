@@ -58,18 +58,16 @@ bool ThrustAccControl::init() {
     PX4_ERR("callback registration failed");
     return false;
   }
-  resetFilters();
+
   return true;
 }
 
-void ThrustAccControl::resetFilters() {
+void ThrustAccControl::resetButterworthFilter() {
   // _lpf.initButterSysLowpass(0, 0, 10, 250);
   _thrust_sp_lpf.set_cutoff_frequency(_param_imu_gyro_cutoff.get(),
                                       _param_thr_lpf_cutoff_frq.get());
 
   _thrust_sp_lpf.reset(_u_prev);
-  _rate_sft_filter.setParameters(1 / _param_imu_gyro_rate_max.get(), 0.5f);
-  _acc_sft_filter.setParameters(1 / _param_imu_gyro_rate_max.get(), 0.5f);
 }
 
 void ThrustAccControl::parameters_updated() {
@@ -78,6 +76,9 @@ void ThrustAccControl::parameters_updated() {
   // to the ideal (K * [1 + 1/sTi + sTd]) form
   // const Vector3f rate_k = Vector3f(_param_thr_p.get(), 0., 0.);
   _thr_p = _param_thr_p.get();
+  _thr_pp =  _param_thr_PP.get();
+
+   PX4_WARN("_thr_pp %f  ",(double)_thr_pp);
   _delta_thr_bound = _param_delta_thr_bound.get();
   _timeout_acc = _param_thr_timeout_acc.get();
   _timeout_time = _param_sys_timeout_time.get() * 1e5;
@@ -98,7 +99,7 @@ void ThrustAccControl::parameters_updated() {
       Vector3f(radians(_param_mc_rollrate_max.get()),
                radians(_param_mc_pitchrate_max.get()),
                radians(_param_mc_yawrate_max.get())));
-  resetFilters();
+  resetButterworthFilter();
 }
 
 float ThrustAccControl::get_u_inverse_model(float target_at) {
@@ -129,38 +130,107 @@ void ThrustAccControl::Run() {
   _vehicle_thrust_acc_setpoint_sub.update();
   _vehicle_thrust_setpoint_sub.update();
   _vehicle_attitude_sub.update();
-  // float last_thrust_sp = 0.0;
+  // float last_thrust_sp = 0.0;    
   if (_vehicle_angular_velocity_sub.updated()) {
+    // PX4_INFO("%f thrust_acc_sp", (double) _vehicle_thrust_acc_setpoint_sub.get().thrust_acc_sp);
+    // PX4_INFO("%f model_ff", (double) _vehicle_thrust_acc_setpoint_sub.get().model_ff);
+
     _vehicle_control_mode_sub.update(&_vehicle_control_mode);
     // // must enable thrust_acc_control to allow it control VehicleThrust
     _vehicle_thrust_acc_setpoint_sub.update();
+    
     _vacc_sub.update();
+  offboard_control_mode_s offboard_control_mode;
+	_offboard_control_mode_sub.copy(&offboard_control_mode);
     _can_run_offboard = (_vehicle_control_mode.flag_control_offboard_enabled &&
-                         _vehicle_control_mode.flag_control_rates_enabled);
+                         _vehicle_control_mode.flag_control_rates_enabled &&
+                         offboard_control_mode.body_rate && (!_vehicle_control_mode.flag_control_attitude_enabled));
+// (!_vehicle_control_mode.flag_control_attitude_enabled)瞎弄得。。
+
     if (_last_can_run && _can_run_offboard) {
+      //  static uint64_t print_counter_2 = 0;
+  // PX4_WARN("offboard_control_mode %f  %f %f  %f  %f",(double)offboard_control_mode.position,(double)offboard_control_mode.velocity,(double)offboard_control_mode.acceleration,(double)offboard_control_mode.attitude,(double)offboard_control_mode.body_rate);
+			// offboard_control_mode_s ocm{};
+			// ocm.position = false;
+      // ocm.velocity = false;
+      // ocm.acceleration = false;
+      // ocm.attitude = false;
+			// ocm.body_rate = true;
+			// ocm.timestamp = hrt_absolute_time();
+			// _offboard_control_mode_pub.publish(ocm);
+
+        // if (1) {
+// PX4_WARN("_vehicle_control_mode.flag_control_offboard_enabled %f ",(double)_vehicle_control_mode.flag_control_offboard_enabled);
+// PX4_WARN("_vehicle_control_mode.flag_control_rates_enabled %f ",(double)_vehicle_control_mode.flag_control_rates_enabled);
       _last_run = _vehicle_thrust_acc_setpoint_sub.get().timestamp;
       _thrust_acc_sp = _vehicle_thrust_acc_setpoint_sub.get().thrust_acc_sp;
       _rates_setpoint =
           matrix::Vector3f(_vehicle_thrust_acc_setpoint_sub.get().rates_sp);
-      _thr_model_ff = _vehicle_thrust_acc_setpoint_sub.get().model_ff;
-      if ((_safety_check) && !safeCheck()) {
-        _safety_check = false;
+     
 
+// PX4_WARN("_setpoint %f  %f  %f  %f %f",(double)_rates_setpoint(0),(double)_rates_setpoint(1),(double)_rates_setpoint(2),(double)_vehicle_thrust_acc_setpoint_sub.get().thrust_acc_sp,(double)_vehicle_thrust_acc_setpoint_sub.get().model_ff);
+      _thr_model_ff = _vehicle_thrust_acc_setpoint_sub.get().model_ff;
+      
+      // if (!safeCheck()) {
+      //   static uint64_t printer_counter_saft = 0;
+      //   if (printer_counter_saft % 10 == 0) {
+      //     printer_counter_saft++;
+      //     PX4_WARN("Safety Check Failed");
+
+      //       vehicle_angular_velocity_s _vehicle_angular_velocity;
+      //       _vehicle_angular_velocity_sub.copy(&_vehicle_angular_velocity);
+      //       matrix::Vector3f rates{_vehicle_angular_velocity.xyz};
+      //     PX4_WARN(" rates %f,  %f,  %f", (double) rates(0),(double) rates(1),(double) rates(2));
+
+      //       matrix::Vector3f acc{_vacc_sub.get().xyz[0], _vacc_sub.get().xyz[1],
+      //                           _vacc_sub.get().xyz[2] + 9.81f};
+      //     PX4_WARN(" acc %f,  %f,  %f", (double) acc(0),(double) acc(1),(double) acc(2));
+      //     PX4_WARN(" _vacc_subz %f",(double)  _vacc_sub.get().xyz[2]);
+      //   }
+      //   PX4_ERR("!safeCheck");
+      //   safeAttitudeHolder();
+      // } 
+      if (hrt_elapsed_time(&_last_run) > _timeout_time) {
+        static uint64_t print_counter = 0;
+        if (print_counter % 10 == 0) {
+          print_counter++;
+          PX4_ERR("MPC Timeout");
+        }
+        PX4_ERR("MPC Timeout");
         safeAttitudeHolder();
       }
-      if ((_safety_check) && (_last_run > 0) &&
-          hrt_elapsed_time(&_last_run) > _timeout_time) {
-        PX4_WARN("MPC Timeout");
-        _safety_check = false;
-        safeAttitudeHolder();
-      }
-      _u_prev = -_vehicle_thrust_setpoint_sub.get().xyz[2];
+     
+      _u_prev = -_vehicle_thrust_setpoint_sub.get().xyz[2];//multicopterRatecontrol会发thrust[0-1]和torque
+      //  if (_vehicle_thrust_acc_setpoint_sub.updated())
+      //PX4_WARN("_u_prev %f",(double)_u_prev );
       // change to FLU setting
       _a_curr = -_vacc_sub.get().xyz[2];
-      float _du = (_thrust_acc_sp - _a_curr) * _thr_p;
-      math::constrain(_du, -_delta_thr_bound, +_delta_thr_bound);
-      _u = _du + _u_prev;
+      //  if (_vehicle_thrust_acc_setpoint_sub.updated()){
+      //PX4_WARN("_thrust_acc_sp %f",(double)_thrust_acc_sp );
+      // PX4_WARN("_vehicle_thrust %f",(double)_vehicle_thrust_acc_setpoint_sub.get().thrust_acc_sp );
+      //PX4_WARN("_a_curr %f",(double)_a_curr );
+      // }
 
+      float _du = (_thrust_acc_sp - _a_curr) * _thr_p;
+      //_thr_p是比例k    _u是0-1  _thr_p是把加速度转成0-1的数量级   _thr_model_ff是前馈应该计算的0-1的数量级
+      
+      static float du_intergrate = 0.4;//hover_u
+      du_intergrate += _du;
+
+
+      math::constrain(_du, -_delta_thr_bound, +_delta_thr_bound);
+      //  if (_vehicle_thrust_acc_setpoint_sub.updated())
+      //PX4_WARN("du_intergrate %f",(double)du_intergrate);
+
+      _u = _du + _u_prev  ;// + _thr_pp* (_thrust_acc_sp - _a_curr);    //old_by_rouerchao
+      // _u =du_intergrate+ _thr_pp* (_thrust_acc_sp - _a_curr);
+
+
+      //  if (_vehicle_thrust_acc_setpoint_sub.updated()){
+      //PX4_WARN("_u %f",(double)_u );
+      //PX4_WARN("_thr_model_ff %f",(double)_thr_model_ff );
+      // }
+      // PX4_WARN("_beta %f",(double)_beta );
       // TODO MPC phase compensation
       // if (_thrust_acc_sp - last_thrust_sp > 0) {
       //   if (_a_curr < _thrust_acc_sp + (float)(.3 * 1e-1)) {
@@ -177,15 +247,25 @@ void ThrustAccControl::Run() {
       _u = math::constrain<float>(_u, 0.0, 1.0);
       vehicle_rates_setpoint_s vehicle_rates_setpoint{};
       vehicle_rates_setpoint.thrust_body[2] = -_u;
+      //PX4_WARN("end_u %f",(double)_u );
+      //  if (_vehicle_thrust_acc_setpoint_sub.updated())
+      // PX4_WARN("_setpoint %f  %f  %f  %f",(double)_rates_setpoint(0),(double)_rates_setpoint(1),(double)_rates_setpoint(2),(double)_vehicle_thrust_acc_setpoint_sub.get().thrust_acc_sp);
       vehicle_rates_setpoint.roll = _rates_setpoint(0);
-      vehicle_rates_setpoint.pitch = _rates_setpoint(1);
+      vehicle_rates_setpoint.pitch = _rates_setpoint(1);//d*(float)(1.1)+(float)(0.5)*(_rates_setpoint(1)-last_rates_setpoint(1));
       vehicle_rates_setpoint.yaw = _rates_setpoint(2);
+
+      // if (print_counter_2 % 5 == 0) {
+          
+      //     last_rates_setpoint=_rates_setpoint;
+      // }
+      // print_counter_2++;
+
       vehicle_rates_setpoint.timestamp = hrt_absolute_time();
       _vehicle_rates_setpoint_pub.publish(vehicle_rates_setpoint);
+
     } else {
       _u_prev = -_vehicle_thrust_setpoint_sub.get().xyz[2];
       _u = _u_prev;
-      _safety_check = true;
     }
     _last_can_run = _can_run_offboard;
 
@@ -193,6 +273,7 @@ void ThrustAccControl::Run() {
 
     // mavlink_log_info(&_mavlink_log_pub, "%f",
     // (double)vehicle_rates_setpoint.roll);
+    
   }
 
   perf_end(_loop_perf);
@@ -219,29 +300,18 @@ bool ThrustAccControl::safeCheck() {
   _vehicle_angular_velocity_sub.copy(&_vehicle_angular_velocity);
   matrix::Vector3f rates{_vehicle_angular_velocity.xyz};
 
+  if (rates.norm() > _rate_limit) {
+        PX4_WARN(" rates %f,  %f,  %f", (double) rates(0),(double) rates(1),(double) rates(2));
+    return false;
+  }
   // TODO accleration is too high
   matrix::Vector3f acc{_vacc_sub.get().xyz[0], _vacc_sub.get().xyz[1],
                        _vacc_sub.get().xyz[2] + 9.81f};
-
-  if (!_safety_check) {
+//  PX4_WARN(" acc %f,  %f,  %f", (double) acc(0),(double) acc(1),(double) acc(2));
+  if (acc.norm() > _acc_limit) {
+    PX4_WARN(" acc %f,  %f,  %f", (double) acc(0),(double) acc(1),(double) acc(2));
     return false;
   }
-
-  if (_acc_sft_filter.update(abs(acc(2))) > _acc_limit) {
-    PX4_WARN("Acc Limit Exceeded");
-    PX4_WARN("Acc Curr: %f", (double)(acc(2)));
-    PX4_WARN("Acc Filtered: %f", (double)(_acc_sft_filter.getState()));
-    _safety_check = false;
-    return false;
-  }
-  if (_rate_sft_filter.update(rates.norm()) > _rate_limit) {
-    PX4_WARN("Rate Limit Exceeded");
-    PX4_WARN("Rate Curr: %f", (double)(rates.norm()));
-    PX4_WARN("Rate Filtered: %f", (double)(_rate_sft_filter.getState()));
-    _safety_check = false;
-    return false;
-  }
-
   return true;
 }
 

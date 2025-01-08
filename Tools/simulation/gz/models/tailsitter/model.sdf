@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <sdf version="1.10">
   <model name="tailsitter">
-    <pose>0 0 0.3 0.0 -1.57096 0.0</pose>
+    <pose>0 0 0.8 0.0 -1.57096 0.0</pose>
     <!-- <pose>0 0 0.3 0 0 0</pose> -->
     <!-- <pose>0 0 0.3 0 -1.57096 -1.1</pose> -->
     <static>0</static>
@@ -9,7 +9,7 @@
     <link name="base_link">` <!-- \todo provide proper inertial : actual mass 1.75 kg -->
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>1.5</mass>
+        <!-- <mass>1.5</mass>
         <inertia>
           <ixx>0.043609000000000</ixx>
           <ixy>0</ixy>
@@ -17,6 +17,16 @@
           <iyy>0.04513000000000</iyy>
           <iyz>0</iyz>
           <izz>0.083220000000000</izz>
+        </inertia> -->
+           <!-- 1.642 2.2360  -->
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.07609000000000</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.014000000000</iyy>
+          <iyz>0</iyz>
+          <izz>0.07520000000000</izz>
         </inertia>
       </inertial>
       <collision name="collision">
@@ -405,7 +415,8 @@
     </link>
     <joint name='rotor_0_joint' type='revolute'>
       <!-- <pose relative_to="base_link">-0.015 -0.25 -0.16 0.174532925 1.396263402 0</pose> -->
-      <pose relative_to="base_link">-0.015 -0.25 -0.16 0 1.5708 0</pose>
+      <pose relative_to="base_link">-0.015 -0.25 -0.26 0 1.5708 0</pose>
+      <!-- <pose relative_to="base_link">-0.015 -0.25 -0.16 0 1.5708 0</pose> -->
       <child>rotor_0_link</child>
       <parent>base_link</parent>
       <axis>
@@ -415,7 +426,8 @@
           <upper>1e+16</upper>
         </limit>
         <dynamics>
-          <damping>0.004</damping>
+          <!-- <damping>0.004</damping> -->
+          <damping>0.001</damping>
         </dynamics>
       </axis>
     </joint>
@@ -521,7 +533,8 @@
       </visual>
     </link>
     <joint name='rotor_1_joint' type='revolute'>
-      <pose relative_to="base_link">-0.015 0.25 0.16 0 1.5708 0</pose>
+      <pose relative_to="base_link">-0.015 0.25 0.26 0 1.5708 0</pose>
+      <!-- <pose relative_to="base_link">-0.015 0.25 0.16 0 1.5708 0</pose> -->
       <child>rotor_1_link</child>
       <parent>base_link</parent>
       <axis>
@@ -531,7 +544,8 @@
           <upper>1e+16</upper>
         </limit>
         <dynamics>
-          <damping>0.004</damping>
+          <!-- <damping>0.004</damping> -->
+          <damping>0.001</damping>
         </dynamics>
       </axis>
     </joint>
@@ -637,7 +651,8 @@
       </visual>
     </link>
     <joint name='rotor_2_joint' type='revolute'>
-      <pose relative_to="base_link">-0.015 0.25 -0.16 0 1.5708 0</pose>
+      <!-- <pose relative_to="base_link">-0.015 0.25 -0.16 0 1.5708 0</pose> -->
+      <pose relative_to="base_link">-0.015 0.25 -0.26 0 1.5708 0</pose>
       <child>rotor_2_link</child>
       <parent>base_link</parent>
       <axis>
@@ -647,7 +662,8 @@
           <upper>1e+16</upper>
         </limit>
         <dynamics>
-          <damping>0.004</damping>
+          <!-- <damping>0.004</damping> -->
+          <damping>0.001</damping>
         </dynamics>
       </axis>
     </joint>
@@ -753,7 +769,8 @@
       </visual>
     </link>
     <joint name='rotor_3_joint' type='revolute'>
-      <pose relative_to="base_link">-0.015 -0.25 0.16 0 1.5708 0</pose>
+      <pose relative_to="base_link">-0.015 -0.25 0.26 0 1.5708 0</pose>
+      <!-- <pose relative_to="base_link">-0.015 -0.25 0.16 0 1.5708 0</pose> -->
       <child>rotor_3_link</child>
       <parent>base_link</parent>
       <axis>
@@ -763,7 +780,8 @@
           <upper>1e+16</upper>
         </limit>
         <dynamics>
-          <damping>0.004</damping>
+          <!-- <damping>0.004</damping> -->
+          <damping>0.001</damping>
         </dynamics>
       </axis>
     </joint>
@@ -852,6 +870,15 @@
       <if_omit_force>false</if_omit_force>
     </plugin>
 
+
+    <plugin filename="libwindPlugin" name="gz::sim::v7::systems::windPlugin">
+      <link_name>base_link</link_name>
+      <area>0.1955</area>
+      <air_density>1.2</air_density>
+      <if_omit_moment>false</if_omit_moment>
+      <if_omit_force>false</if_omit_force>
+    </plugin>
+    
 <!-- LYU: add control face -->
     <link name="left_elevon">
       <inertial>
@@ -996,7 +1023,7 @@
 
 
 <!-- LYU：add lift drag for test  -->
-    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+    <!-- <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
       <a0>0.05984281113</a0>
       <cla>4.752798721</cla>
       <cda>0.6417112299</cda>
@@ -1067,7 +1094,7 @@
       filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
       <joint_name>servo_2</joint_name>
       <sub_topic>servo_2</sub_topic>
-    </plugin>
+    </plugin> -->
 
   </model>
 </sdf>

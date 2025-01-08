@@ -171,7 +171,7 @@ MulticopterRateControl::Run()
 		// manual_mode not attitude
 		if (_vehicle_control_mode.flag_control_manual_enabled && !_vehicle_control_mode.flag_control_attitude_enabled) {
 			// generate the rate setpoint from sticks
-			// PX4_WARN("entering maunal mode");
+			PX4_ERR("!!!!!!!!!!!!!!!!!!!!entering maunal mode!!!!!!!!!!!!!!!!!!!!!!");
 			manual_control_setpoint_s manual_control_setpoint;
 
 			if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
@@ -196,15 +196,17 @@ MulticopterRateControl::Run()
 			}
 
 		} else if (_vehicle_rates_setpoint_sub.update(&vehicle_rates_setpoint)) {
-			// PX4_INFO("here I receive my target");
+			// PX4_ERR("vehicle_rates_setpoint where from");
 			if (_vehicle_rates_setpoint_sub.copy(&vehicle_rates_setpoint)) {
 				_rates_setpoint(0) = PX4_ISFINITE(vehicle_rates_setpoint.roll)  ? vehicle_rates_setpoint.roll  : rates(0);
 				_rates_setpoint(1) = PX4_ISFINITE(vehicle_rates_setpoint.pitch) ? vehicle_rates_setpoint.pitch : rates(1);
 				_rates_setpoint(2) = PX4_ISFINITE(vehicle_rates_setpoint.yaw)   ? vehicle_rates_setpoint.yaw   : rates(2);
 				_thrust_setpoint = Vector3f(vehicle_rates_setpoint.thrust_body);
+				// PX4_ERR("vehicle_rates_setpoint where from   _thrust_setpoint  %f",(double)_thrust_setpoint(2));
 		// PX4_INFO("inner thrust:%f %f %f",(double)_thrust_setpoint(0),(double)_thrust_setpoint(1), (double)_thrust_setpoint(2));
-
+				// PX4_INFO("here I receive my target  %f", (double)_thrust_setpoint(2));
 			}
+
 		}
 		// PX4_INFO("thrust:%f %f %f",(double)_thrust_setpoint(0),(double)_thrust_setpoint(1), (double)_thrust_setpoint(2));
 		// PX4_INFO("_rates_setpoint:%f %f %f",(double)_rates_setpoint(0),(double)_rates_setpoint(1),(double)_rates_setpoint(2));
@@ -315,7 +317,7 @@ MulticopterRateControl::Run()
 			// publish thrust and torque setpoints
 			vehicle_thrust_setpoint_s vehicle_thrust_setpoint{};
 			vehicle_torque_setpoint_s vehicle_torque_setpoint{};
-
+	// PX4_ERR("1111111111111111   _thrust_setpoint  %f",(double)_thrust_setpoint(2));
 			_thrust_setpoint.copyTo(vehicle_thrust_setpoint.xyz);
 			vehicle_torque_setpoint.xyz[0] = PX4_ISFINITE(att_control(0)) ? att_control(0) : 0.f;
 			vehicle_torque_setpoint.xyz[1] = PX4_ISFINITE(att_control(1)) ? att_control(1) : 0.f;
@@ -338,7 +340,7 @@ MulticopterRateControl::Run()
 					}
 				}
 			}
-
+	// PX4_ERR(" vehicle_thrust_setpoint.xyz %f",(double)vehicle_thrust_setpoint.xyz[2]);
 			vehicle_thrust_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
 			vehicle_thrust_setpoint.timestamp = hrt_absolute_time();
 			_vehicle_thrust_setpoint_pub.publish(vehicle_thrust_setpoint);

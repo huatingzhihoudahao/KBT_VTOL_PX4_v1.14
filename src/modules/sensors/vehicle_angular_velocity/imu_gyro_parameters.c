@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
-* Notch filter frequency for gyro in x axis
+* Notch filter frequency for gyro in x and y axis
 *
 * The center frequency for the 2nd order notch filter on the primary gyro.
 * This filter can be enabled to avoid feedback amplification of structural resonances at a specific frequency.
@@ -51,7 +51,7 @@
 PARAM_DEFINE_FLOAT(GYROX_NF0_FRQ, 0.0f);
 
 /**
-* Notch filter bandwidth for gyro in x axis
+* Notch filter bandwidth for gyro in x and y axis
 *
 * The frequency width of the stop band for the 2nd order notch filter on the primary gyro.
 * See "GYROX_NF0_FRQ" to activate the filter and to set the notch frequency.
@@ -64,40 +64,6 @@ PARAM_DEFINE_FLOAT(GYROX_NF0_FRQ, 0.0f);
 * @group Sensors
 */
 PARAM_DEFINE_FLOAT(GYROX_NF0_BW, 10.0f);
-
-/**
-* Notch filter frequency for gyro in y axis
-*
-* The center frequency for the 2nd order notch filter on the primary gyro.
-* This filter can be enabled to avoid feedback amplification of structural resonances at a specific frequency.
-* This only affects the signal sent to the controllers, not the estimators.
-* Applies to angular velocity sent to the controllers.
-* See "GYROY_NF0_BW" to set the bandwidth of the filter.
-*
-* A value of 0 disables the filter.
-*
-* @min 0
-* @max 1000
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(GYROY_NF0_FRQ, 0.0f);
-
-/**
-* Notch filter bandwidth for gyro in x axis
-*
-* The frequency width of the stop band for the 2nd order notch filter on the primary gyro.
-* See "GYROY_NF0_FRQ" to activate the filter and to set the notch frequency.
-* Applies to angular velocity sent to the controllers.
-*
-* @min 0
-* @max 100
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(GYROY_NF0_BW, 10.0f);
 
 /**
 * Notch filter frequency for gyro in z axis
@@ -168,41 +134,6 @@ PARAM_DEFINE_FLOAT(GYROX_NF1_FRQ, 0.0f);
 PARAM_DEFINE_FLOAT(GYROX_NF1_BW, 20.0f);
 
 /**
-* Notch filter 2 frequency for gyro in y axis
-*
-* The center frequency for the 2nd order notch filter on the primary gyro.
-* This filter can be enabled to avoid feedback amplification of structural resonances at a specific frequency.
-* This only affects the signal sent to the controllers, not the estimators.
-* Applies to angular velocity sent to the controllers.
-* See "GYROY_NF1_BW" to set the bandwidth of the filter.
-*
-* A value of 0 disables the filter.
-*
-* @min 0
-* @max 1000
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(GYROY_NF1_FRQ, 0.0f);
-
-/**
-* Notch filter 2 frequency for gyro in y axis
-*
-* The frequency width of the stop band for the 2nd order notch filter on the primary gyro.
-* See "GYROY_NF1_FRQ" to activate the filter and to set the notch frequency.
-* Applies to angular velocity sent to the controllers.
-*
-* @min 0
-* @max 100
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(GYROY_NF1_BW, 20.0f);
-
-
-/**
 * Useless for current project, add this to avoid compile error
 *
 * The frequency width of the stop band for the 2nd order notch filter on the primary gyro.
@@ -216,9 +147,6 @@ PARAM_DEFINE_FLOAT(GYROY_NF1_BW, 20.0f);
 * @group Sensors
 */
 PARAM_DEFINE_FLOAT(GYRO_CUTOFF, 20.0f);
-
-
-
 
 /**
 * Notch filter 2 frequency for gyro in z axis
@@ -340,24 +268,6 @@ PARAM_DEFINE_FLOAT(DGYROZ_NF_BW, 10.0f);
 * @group Sensors
 */
 PARAM_DEFINE_FLOAT(GYROX_CUTOFF, 40.0f);
-
-
-/**
-* Low pass filter cutoff frequency for gyro y axis
-*
-* The cutoff frequency for the 2nd order butterworth filter on the primary gyro.
-* This only affects the angular velocity sent to the controllers, not the estimators.
-* It applies also to the angular acceleration (D-Term filter), see DGYRO_CUTOFF.
-*
-* A value of 0 disables the filter.
-*
-* @min 0
-* @max 1000
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(GYROY_CUTOFF, 40.0f);
 
 /**
 * Low pass filter cutoff frequency for gyro z axis

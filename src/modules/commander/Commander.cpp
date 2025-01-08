@@ -803,7 +803,9 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					desired_nav_state = vehicle_status_s::NAVIGATION_STATE_STAB;
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_OFFBOARD) {
+
 					desired_nav_state = vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
+					PX4_ERR("desired_nav_state = vehicle_status_s::NAVIGATION_STATE_OFFBOARD;");
 				}
 
 			} else {
@@ -2409,6 +2411,11 @@ void Commander::updateControlMode()
 	_vehicle_control_mode = {};
 	mode_util::getVehicleControlMode(_arm_state_machine.isArmed(), _vehicle_status.nav_state,
 					 _vehicle_status.vehicle_type, _offboard_control_mode_sub.get(), _vehicle_control_mode);
+// offboard_control_mode_s tmp=_offboard_control_mode_sub.get();
+//PX4_ERR("_vehicle_status.nav_state %f  ",(double)_vehicle_status.nav_state);
+//PX4_ERR("offboard_control_mode %f  %f %f  %f  %f",(double)tmp.position,(double)tmp.velocity,(double)tmp.acceleration,(double)tmp.attitude,(double)tmp.body_rate);
+//PX4_ERR("flag_control_attitude_enabled %f  ",(double)_vehicle_control_mode.flag_control_attitude_enabled);
+
 	_vehicle_control_mode.timestamp = hrt_absolute_time();
 	_vehicle_control_mode_pub.publish(_vehicle_control_mode);
 }

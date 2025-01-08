@@ -30,9 +30,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-
+#include <cstdio>  
 #include "control_mode.hpp"
 #include <uORB/topics/vehicle_status.h>
+
 namespace mode_util
 {
 
@@ -46,7 +47,11 @@ void getVehicleControlMode(bool armed, uint8_t nav_state, uint8_t vehicle_type,
 			   vehicle_control_mode_s &vehicle_control_mode)
 {
 	vehicle_control_mode.flag_armed = armed;
+	// printf("nav_state;%d",nav_state);
+		// printf("nav_state;%d",nav_state);
+// PX4_ERR("nav_state;%d",nav_state);
 
+// printf("offboard_control_mode %f  %f %f  %f  %f",(double)offboard_control_mode.position,(double)offboard_control_mode.velocity,(double)offboard_control_mode.acceleration,(double)offboard_control_mode.attitude,(double)offboard_control_mode.body_rate);
 	switch (nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
 		vehicle_control_mode.flag_control_manual_enabled = true;

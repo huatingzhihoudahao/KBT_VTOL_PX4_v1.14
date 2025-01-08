@@ -179,6 +179,7 @@ void Report::prepare(uint8_t vehicle_type)
 {
 	// Get mode requirements before running any checks (in particular the mode checks require them)
 	mode_util::getModeRequirements(vehicle_type, _failsafe_flags);
+	PX4_DEBUG("_failsafe_flags");
 }
 
 NavModes Report::getModeGroup(uint8_t nav_state) const
