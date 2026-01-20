@@ -141,7 +141,8 @@ void SensorAirspeedSim::Run()
 			// const float yaw = _arsp_yaw.get();
 
 			float diff_pressure = 0.0f;
-			const float diff_pressure_noise = (float)generate_wgn() * 0.01f;
+			const float diff_pressure_noise = 0;
+			// const float diff_pressure_noise = (float)generate_wgn() * 0.01f;
 
 			if (_arspd_rot.get() == 1) {
 			        diff_pressure = 0.005f * air_density  * body_velocity(2) * body_velocity(2) + diff_pressure_noise;
@@ -157,6 +158,7 @@ void SensorAirspeedSim::Run()
 			differential_pressure.differential_pressure_pa = (double)diff_pressure * 100.0; // hPa to Pa;
 			differential_pressure.temperature = temperature_local;
 			differential_pressure.timestamp = hrt_absolute_time();
+			// PX4_ERR("diff_pressure_pa FROM SENSORAIRSPEEDSIN: %f",(double)differential_pressure.differential_pressure_pa);
 			_differential_pressure_pub.publish(differential_pressure);
 
 		}

@@ -1,0 +1,157 @@
+. ${R}etc/init.d/rc.vtol_defaults
+
+PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
+PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=tailsitter}
+# ==========================================
+# 1. 机型与物理定义 (Tailsitter, 无舵面)
+# ==========================================
+param set-default MAV_TYPE 20            # VTOL Tailsitter
+param set-default SIM_GZ_EN 1
+param set-default SENS_BOARD_ROT 24  # pitch rotation 90 deg
+param set-default VT_ELEV_MC_LOCK 1  # unlock elevon servo
+
+# simulation gps
+param set-default SENS_EN_GPSSIM 1
+# simulation barometer
+param set-default SENS_EN_BAROSIM 0
+# simulation magenetometer
+param set-default SENS_EN_MAGSIM 1
+# simulation airspeed
+param set-default SENS_EN_ARSPDSIM 1
+param set-default HILAB_ARSPDROT 1
+param set-default SIM_GPS_USED 40  # use 40 satellites
+
+
+param set-default CA_AIRFRAME 4          # Tailsitter 构型
+param set-default CA_ROTOR_COUNT 4       # 4电机
+param set-default CA_SV_CS_COUNT 0       # [关键] 0 舵面，强制使用差分推力
+param set-default CA_SV_CS0_TYPE 1
+# 确保启用所有轴的差分推力 (Bitmask: 1=Roll, 2=Pitch, 4=Yaw -> 1+2+4=7)
+param set-default VT_FW_DIFTHR_EN 7      
+
+param set-default CA_AIRFRAME 4		# 4：tailsitter
+param set-default CA_ROTOR_COUNT 4
+
+param set-default CA_ROTOR0_PX 0.525
+param set-default CA_ROTOR0_PY 0.525
+param set-default CA_ROTOR0_KM  0.05
+
+param set-default CA_ROTOR1_PX -0.525
+param set-default CA_ROTOR1_PY -0.525
+param set-default CA_ROTOR1_KM  0.05
+
+param set-default CA_ROTOR2_PX 0.525
+param set-default CA_ROTOR2_PY -0.525
+param set-default CA_ROTOR2_KM -0.05
+
+param set-default CA_ROTOR3_PX -0.525
+param set-default CA_ROTOR3_PY 0.525
+param set-default CA_ROTOR3_KM -0.05
+
+param set-default SIM_GZ_EC_FUNC1 101
+param set-default SIM_GZ_EC_FUNC2 102
+param set-default SIM_GZ_EC_FUNC3 103
+param set-default SIM_GZ_EC_FUNC4 104
+
+param set-default SIM_GZ_EC_MIN1 150
+param set-default SIM_GZ_EC_MIN2 150
+param set-default SIM_GZ_EC_MIN3 150
+param set-default SIM_GZ_EC_MIN4 150
+
+param set-default SIM_GZ_EC_MAX1 1000
+param set-default SIM_GZ_EC_MAX2 1000
+param set-default SIM_GZ_EC_MAX3 1000
+param set-default SIM_GZ_EC_MAX4 1000
+
+# servo roll pitch yaw
+param set-default SIM_GZ_SV_FUNC1 201
+param set-default SIM_GZ_SV_FUNC2 202
+param set-default SIM_GZ_SV_FUNC3 203
+
+# TODO: set 567 max and mini
+
+param set-default MPC_THR_HOVER 0.60
+
+
+
+
+
+
+
+# 差分推力缩放 (Scaling)
+# Tailsitter 极其依赖这些值。
+# Yaw 必须给够，否则无法协调转弯。
+param set-default VT_FW_DIFTHR_S_R 0.8   # 滚转差分 (稍降一点防止震荡)
+param set-default VT_FW_DIFTHR_S_P 1.0   # 俯仰差分 (Tailsitter 俯仰力矩通常较小，给满)
+param set-default VT_FW_DIFTHR_S_Y 0.8   # [修正] 偏航差分。0.1 绝对不够，改为 0.8
+
+# ==========================================
+# 2. 转换设置 (Transition)
+# ==========================================
+param set-default VT_TYPE 0              # Tailsitter
+param set-default VT_F_TRANS_DUR 1.0 #2.5 #设的短的话或许trans打的快 速度来不及起来  可以让它trans结束的时候速度低一点    免得后面3d飞tecs让它速度超过的太多 8.0     # 前向转换时间 (加快一点，10s有点久)
+param set-default VT_B_TRANS_DUR 6.0     # 后向转换
+param set-default VT_ARSP_TRANS 7.0      # 转换空速 (略低于最小空速，利用推力硬拔)
+param set-default VT_TRANS_TIMEOUT 20    # 给足超时时间防止 Failsafe
+
+# 转换推力 (Transition Thrust)
+# Tailsitter 低头时需要推力维持高度
+param set-default VT_F_TRANS_THR 0.8#0.75     
+
+# ==========================================
+# 3. 固定翼姿态控制 (FW Attitude)
+# ==========================================
+# 针对无舵面机型，这些增益作用于 Differential Thrust
+param set-default FW_P_TC 0.4            # 俯仰时间常数 (越小响应越快)
+param set-default FW_R_TC 0.4            # 滚转时间常数
+
+# 增益 (从你之前的 0.04 提上来)
+param set-default FW_PR_P 0.25           # 俯仰 P
+param set-default FW_RR_P 0.30           # 滚转 P
+param set-default FW_YR_P 0.15           # 偏航 P (用于协调转弯)
+param set-default FW_RR_I 0.1
+# 限制
+param set-default FW_R_LIM 180 #65            # [关键] 最大滚转 60度 (为 30m 半径转弯留余量)
+param set-default FW_P_LIM_MAX 180
+param set-default FW_P_LIM_MIN -180       # Tailsitter 允许大攻角
+
+# ==========================================
+# 4. 速度与油门 (Speed & Throttle)
+# ==========================================
+param set-default FW_ARSP_MODE 0         # 0=使用空速计 (仿真环境)
+param set-default FW_AIRSPD_MIN 8.0      # 最小空速
+param set-default FW_AIRSPD_TRIM 10.0    # [匹配脚本] 巡航 12m/s
+param set-default FW_AIRSPD_MAX 12.0
+param set-default FW_AIRSPD_STALL 6.0
+
+# 油门限制
+param set-default FW_THR_MIN 0.1         # 最小油门 (不能为0，否则失去姿态控制)
+param set-default FW_THR_TRIM 0.4        # 悬停0.6，平飞0.4是合理的
+param set-default FW_THR_MAX 0.95
+param set-default FW_T_CLMB_R_SP 20.0
+param set-default FW_T_SINK_R_SP 20.0
+param set-default FW_T_CLMB_MAX 20.0
+param set-default FW_T_SINK_MAX 20.0
+param set-default FW_THR_SLEW_MAX 0     # 油门变化速率限制
+
+param set-default FW_T_ALT_TC 0.5 #TECS 高度环时间常数
+# ==========================================
+# 5. NPFG 路径跟踪参数 (针对 30m 小圈优化)
+# ==========================================
+# 周期 (Period): 越小跟踪越紧，但容易震荡。
+# 对于 12m/s 飞 30m 圈，需较快响应。
+param set-default NPFG_PERIOD 4.0        # [修正] 12 -> 8，加强跟踪
+param set-default NPFG_DAMPING 0.7       # 阻尼 0.7 (标准值)
+param set-default NPFG_ROLL_TC 0.8       # 滚转时间常数估计
+param set-default NPFG_EN_TRACK_K 1      # 启用航迹保持
+
+# ==========================================
+# 6. 仿真与传感器特定设置
+# ==========================================
+param set-default SENS_BOARD_ROT 24      # Pitch 270 (Tailsitter 标配)
+param set-default SENS_EN_ARSPDSIM 1     # 启用空速仿真
+param set-default CBRK_AIRSPD_CHK 162128 # 允许无空速计启动 (防止仿真初始化慢)
+param set-default NAV_ACC_RAD 5.0        # 航点接受半径
+param set-default MIS_TAKEOFF_ALT 20.0
+

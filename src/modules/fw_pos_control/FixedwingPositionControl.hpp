@@ -261,7 +261,9 @@ private:
 	float _pitch{0.0f};
 	float _yaw{0.0f};
 	float _yawrate{0.0f};
-
+	double outside_ax{0.0f};
+	double outside_ay{0.0f};
+	double outside_az{0.0f};
 	float _body_acceleration_x{0.f};
 	float _body_velocity_x{0.f};
 

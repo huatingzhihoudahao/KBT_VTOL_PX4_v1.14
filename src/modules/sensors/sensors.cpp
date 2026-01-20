@@ -263,7 +263,7 @@ void Sensors::diff_pres_poll()
 	differential_pressure_s diff_pres{};
 
 	if (_diff_pres_sub.update(&diff_pres)) {
-
+		// PX4_ERR("diff_pressure_pa FROM SENSORS_ start: %f",(double)diff_pres.differential_pressure_pa);
 		if (!PX4_ISFINITE(diff_pres.differential_pressure_pa)) {
 			// ignore invalid data and reset accumulated
 
@@ -340,14 +340,26 @@ void Sensors::diff_pres_poll()
 				smodel = AIRSPEED_SENSOR_MODEL_MEMBRANE;
 				break;
 			}
-
+			// PX4_ERR("diff_pressure_pa FROM SENSORS_ end: %f",(double)differential_pressure_pa);
 			float indicated_airspeed_m_s = calc_IAS_corrected((enum AIRSPEED_COMPENSATION_MODEL)_parameters.air_cmodel,
 						       smodel, _parameters.air_tube_length, _parameters.air_tube_diameter_mm,
 						       differential_pressure_pa, baro_pressure_pa, temperature);
 
 			// assume that CAS = IAS as we don't have an CAS-scale here
 			float true_airspeed_m_s = calc_TAS_from_CAS(indicated_airspeed_m_s, baro_pressure_pa, temperature);
-
+			vehicle_local_position_s lpos{};
+			
+			
+			//FHR 启用truth airspeed
+			if(_vehicle_local_position_sub.updated())
+			{
+				_vehicle_local_position_sub.copy(&lpos);
+				matrix::Vector3f local_velocity = matrix::Vector3f{lpos.vx, lpos.vy, lpos.vz};
+				true_airspeed_m_s = local_velocity.norm();
+				indicated_airspeed_m_s = local_velocity.norm();
+			}
+			
+			// PX4_ERR("true_airspeed_m_s %f",(double)true_airspeed_m_s);
 			if (PX4_ISFINITE(indicated_airspeed_m_s) && PX4_ISFINITE(true_airspeed_m_s)) {
 
 				airspeed_s airspeed;

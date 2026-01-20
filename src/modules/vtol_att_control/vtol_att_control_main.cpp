@@ -61,7 +61,22 @@ VtolAttitudeControl::VtolAttitudeControl() :
 {
 	// start vtol in rotary wing mode
 	_vtol_vehicle_status.vehicle_vtol_state = vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC;
+	PX4_ERR("start vtol in rotary wing mode ,%d",_vtol_vehicle_status.vehicle_vtol_state);
+	// 1. 声明一个存储参数值的变量
+	float value = 0.0f; 
 
+	// 2. 查找参数，获取句柄
+	param_t handle = param_find("VT_PSHER_SLEW");
+
+	// 3. 使用句柄获取参数的值
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &value);
+		
+		// 4. 正确打印参数值 (使用 %f)
+		PX4_ERR("VT_PSHER_SLEW value -> %f", (double)value); 
+	} else {
+		PX4_ERR("VT_PSHER_SLEW not found!");
+	}
 	parameters_update();
 
 	if (static_cast<vtol_type>(_param_vt_type.get()) == vtol_type::TAILSITTER) {
@@ -76,7 +91,39 @@ VtolAttitudeControl::VtolAttitudeControl() :
 	} else {
 		exit_and_cleanup();
 	}
+// 声明变量用于存储参数值
+    float param_val_thr = 0.0f;
+    float param_val_slew = 0.0f;
+    
+    // 1. VT_F_TRANS_THR (转换目标推力)
+    param_t handle_thr = param_find("VT_F_TRANS_THR");
+    if (handle_thr != PARAM_INVALID) {
+        param_get(handle_thr, &param_val_thr);
+        // 使用 %f 正确输出浮点数
+        PX4_INFO("VT_F_TRANS_THR Value: %f", (double)param_val_thr); 
+    } else {
+        PX4_ERR("VT_F_TRANS_THR not found.");
+    }
 
+    // 2. VT_PSHER_SLEW (推杆推力斜率)
+    param_t handle_slew = param_find("VT_PSHER_SLEW");
+    if (handle_slew != PARAM_INVALID) {
+        param_get(handle_slew, &param_val_slew);
+        PX4_INFO("VT_PSHER_SLEW Value: %f", (double)param_val_slew);
+    } else {
+        // 如果找不到，很可能它的值是0（默认或隐藏），导致推力冲击
+        PX4_ERR("VT_PSHER_SLEW not found. Check if it is 0."); 
+    }
+
+    // 3. VT_PSHER_RMP_DT (旧参数 - 预期找不到或返回INVALID)
+    param_t handle_rmp = param_find("VT_PSHER_RMP_DT");
+    if (handle_rmp != PARAM_INVALID) {
+        // 如果找到了，说明您的固件可能很旧，或者有临时的旧参数加载
+        PX4_INFO("VT_PSHER_RMP_DT Handle: %d (Found - Check value if needed)", handle_rmp); 
+    } else {
+        // 这是预期结果，因为它已被移除
+        PX4_INFO("VT_PSHER_RMP_DT not found (Removed parameter)."); 
+    }
 	_flaps_setpoint_pub.advertise();
 	_spoilers_setpoint_pub.advertise();
 	_vtol_vehicle_status_pub.advertise();

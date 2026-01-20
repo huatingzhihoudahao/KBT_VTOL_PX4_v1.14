@@ -1,0 +1,10 @@
+/home/cybird/.gz/sim/plugins/_setup_util.py
+/home/cybird/.gz/sim/plugins/env.sh
+/home/cybird/.gz/sim/plugins/setup.bash
+/home/cybird/.gz/sim/plugins/local_setup.bash
+/home/cybird/.gz/sim/plugins/setup.sh
+/home/cybird/.gz/sim/plugins/local_setup.sh
+/home/cybird/.gz/sim/plugins/setup.zsh
+/home/cybird/.gz/sim/plugins/local_setup.zsh
+/home/cybird/.gz/sim/plugins/.rosinstall
+/home/cybird/.gz/sim/plugins/libAerodynamicsPlugin.so

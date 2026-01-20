@@ -175,3 +175,12 @@ param set-default VT_F_TRANS_DUR 5
 param set-default VT_TYPE 0
 
 param set-default WV_EN 0
+
+# # 1. 加大 P 值 (增加刚度，锁住姿态)
+# param set MC_PITCH_P 0.05
+# param set MC_PITCHRATE_P 0.15
+# # 2. (可选) 如果还震，稍微给点微分 D 来阻尼
+# param set MC_PITCHRATE_D 0.003
+
+# # 3. 再次确认积分项 (防止疯转)
+# param set MC_YAWRATE_I 0.01

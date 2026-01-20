@@ -144,7 +144,7 @@ uORB::Publication<offboard_control_mode_s>		_offboard_control_mode_pub{ORB_ID(of
   float _a_curr;
   float _thrust_acc_sp{};
   matrix::Quaternionf _rotate_q{};
-  float _thr_p,_thr_pp;
+  float _thr_p,_thr_pp,_rollrate_i;
   float _beta;
   float _thr_model_ff;
   // we assumes the model of thrust is quadratic, i.e. a_t = a*u
@@ -174,6 +174,8 @@ uORB::Publication<offboard_control_mode_s>		_offboard_control_mode_pub{ORB_ID(of
       (ParamFloat<px4::params::THR_P>)_param_thr_p,
       (ParamFloat<px4::params::THR_PP>)_param_thr_PP,
       
+      (ParamFloat<px4::params::MC_ROLLRATE_I>)_param_MC_ROLLRATE_I,
+
       (ParamFloat<px4::params::THR_TMO_ACC>)_param_thr_timeout_acc,
       (ParamFloat<px4::params::GYROX_CUTOFF>)_param_imu_gyro_cutoff,
       (ParamFloat<px4::params::THR_DELTA_BOUND>)_param_delta_thr_bound,

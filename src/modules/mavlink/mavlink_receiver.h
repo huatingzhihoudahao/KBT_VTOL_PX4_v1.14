@@ -209,6 +209,7 @@ private:
 	orb_advert_t at_w_setpt_pub{nullptr};
 
 	void handle_message_offboard_heartbeat(mavlink_message_t *msg);
+	void handle_message_offboard_vtol_npfg(mavlink_message_t *msg);
 	// orb_advert_t _offboard_control_mode_pub{nullptr};//后面有了？
 
 #if !defined(CONSTRAINED_FLASH)

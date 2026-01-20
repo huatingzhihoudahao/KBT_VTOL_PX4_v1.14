@@ -164,6 +164,7 @@ float FixedwingRateControl::get_airspeed_and_update_scaling()
 
 	if ((_param_fw_arsp_mode.get() == 0) && airspeed_valid) {
 		/* prevent numerical drama by requiring 0.5 m/s minimal speed */
+		// PX4_ERR("Airspeed used for scaling: %f m/s",(double) _airspeed_validated_sub.get().calibrated_airspeed_m_s);
 		airspeed = math::max(0.5f, _airspeed_validated_sub.get().calibrated_airspeed_m_s);
 
 	} else {
@@ -424,6 +425,57 @@ void FixedwingRateControl::Run()
 		    _vcontrol_mode.flag_control_attitude_enabled ||
 		    _vcontrol_mode.flag_control_manual_enabled) {
 			{
+
+				// ================= [插入开始] FHR Fix - 终极拦截补丁 =================
+				// 逻辑：Tailsitter 在 Transition 或 FW 模式下，强制油门不低于 Trim 值
+				// 原理：因为 AttCtrl 在 Trans 期间不工作，导致传过来的推力是 0，我们在这里手动修补它。
+				
+				// bool is_tailsitter = _vehicle_status.is_vtol_tailsitter;
+				// bool is_trans_or_fw = _vehicle_status.in_transition_mode || 
+									//   _vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING;
+				//FHR
+// ================= [插入开始] FHR Fix - 终极拦截补丁 (带延时保护) =================
+                // 原理：不仅在 Trans 期间强拉油门，在切换完成后的短时间内(保护期)也继续强拉，
+                // 防止状态切换瞬间 TECS 还没接管导致的 0.8 -> 0 跌落。
+
+                // 1. 定义静态变量用于记忆状态 (static 变量会保留上一帧的值)
+                static bool _last_in_transition = false;
+                static hrt_abstime _transition_end_timestamp = 0;
+
+                // 2. 获取当前状态
+                bool current_in_trans = _vehicle_status.in_transition_mode;
+                
+                // 3. 捕捉下降沿：上一帧是 Trans，这一帧不是 -> 说明刚刚完成切换
+                if (_last_in_transition && !current_in_trans) {
+                    _transition_end_timestamp = hrt_absolute_time();
+                    // PX4_WARN(">>> Transition End! Holding thrust for protection...");
+                }
+                _last_in_transition = current_in_trans;
+
+                // 4. 定义“强制推力”的激活条件
+                bool activate_thrust_guard = false;
+
+                // 条件 A: 正在转换中 (且不是 FW 类型，保留你原本的逻辑)
+                if (current_in_trans && _vehicle_status.vehicle_type != vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+                    activate_thrust_guard = true;
+                }
+                // 条件 B: 【关键新增】刚刚切入 FW 模式的 1.0 秒内 (延时保护)
+                // 这能完美填补 0.8 -> 0 -> 正常值 之间的真空期
+                else if ((hrt_absolute_time() - _transition_end_timestamp) < 0.25*1000000) { // 1.0秒 = 1000000us
+                    activate_thrust_guard = true;
+                }
+
+                // 5. 执行强制赋值
+                if (activate_thrust_guard) {
+                    float min_safe_thrust = 0.8f; 
+                    
+                    // 只有当当前计算出的推力小于保底值时才覆盖 (防止限制了更大的推力需求)
+                    if (_vehicle_thrust_setpoint.xyz[0] < min_safe_thrust) {
+                        _vehicle_thrust_setpoint.xyz[0] = min_safe_thrust;
+                    }
+                }
+                // ================= [插入结束] =================
+
 				_vehicle_thrust_setpoint.timestamp = hrt_absolute_time();
 				_vehicle_thrust_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
 				_vehicle_thrust_setpoint_pub.publish(_vehicle_thrust_setpoint);

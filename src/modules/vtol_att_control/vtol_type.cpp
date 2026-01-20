@@ -112,6 +112,8 @@ void VtolType::update_fw_state()
 
 	// copy virtual attitude setpoint to real attitude setpoint
 	memcpy(_v_att_sp, _fw_virtual_att_sp, sizeof(vehicle_attitude_setpoint_s));
+	// TECS 输出 (FW 惯例) -> 修正为 MC 惯例  FHR
+    // _v_att_sp->pitch_body = _fw_virtual_att_sp->pitch_body - M_PI_2_F;
 	_mc_roll_weight = 0.0f;
 	_mc_pitch_weight = 0.0f;
 	_mc_yaw_weight = 0.0f;

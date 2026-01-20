@@ -43,6 +43,10 @@ bool
 WindEstimator::initialise(const matrix::Vector3f &velI, const float hor_vel_variance, const float heading_rad,
 			  const float tas_meas, const float tas_variance)
 {
+	#ifdef CONFIG_NO_WIND
+    // 无风模式下跳过所有更新
+    return true;
+	#endif
 	if (PX4_ISFINITE(tas_meas) && PX4_ISFINITE(tas_variance)) {
 
 		constexpr float initial_heading_var = sq(math::radians(INITIAL_HEADING_ERROR_DEG));
@@ -78,7 +82,10 @@ WindEstimator::update(uint64_t time_now)
 	if (!_initialised) {
 		return;
 	}
-
+#ifdef CONFIG_NO_WIND
+    // 无风模式下跳过所有更新
+    return;
+#endif
 	// set reset state to false (is set to true when initialise fuction is called later)
 	_wind_estimator_reset = false;
 
@@ -111,7 +118,10 @@ WindEstimator::fuse_airspeed(uint64_t time_now, const float true_airspeed, const
 		_initialised = initialise(velI, hor_vel_variance, matrix::Eulerf(q_att).psi(), true_airspeed, _tas_var);
 		return;
 	}
-
+#ifdef CONFIG_NO_WIND
+    // 无风模式下跳过所有更新
+    return;
+#endif
 	// don't fuse faster than 10Hz
 	if (time_now - _time_last_airspeed_fuse < 100_ms) {
 		return;
@@ -155,7 +165,10 @@ WindEstimator::fuse_beta(uint64_t time_now, const matrix::Vector3f &velI, const 
 		_initialised = initialise(velI, hor_vel_variance, matrix::Eulerf(q_att).psi());
 		return;
 	}
-
+#ifdef CONFIG_NO_WIND
+    // 无风模式下跳过所有更新
+    return;
+#endif
 	// don't fuse faster than 10Hz
 	if (time_now - _time_last_beta_fuse < 100_ms) {
 		return;

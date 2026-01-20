@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# generated from catkin/cmake/template/local_setup.sh.in
+
+# since this file is sourced either use the provided _CATKIN_SETUP_DIR
+# or fall back to the destination set at configure time
+: ${_CATKIN_SETUP_DIR:=/home/cybird/下载/px4-n/px4-v1.14.0-stable/VTOL-gz-simulation/build/devel}
+CATKIN_SETUP_UTIL_ARGS="--extend --local"
+. "$_CATKIN_SETUP_DIR/setup.sh"
+unset CATKIN_SETUP_UTIL_ARGS

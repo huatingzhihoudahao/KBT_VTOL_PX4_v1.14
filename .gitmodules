@@ -51,5 +51,5 @@
 	branch = px4
 [submodule "msg"]
 	path = msg
-	url = git@github.com:SYSU-HILAB/VTOL-px4-msgs.git
-	branch = offboard
+	url = git@github.com:huatingzhihoudahao/VTOL-px4-msgs.git
+	branch = main

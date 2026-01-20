@@ -280,6 +280,9 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 	case MAVLINK_MSG_ID_OFFBOARD_HEARTBEAT:
 		handle_message_offboard_heartbeat(msg);
 		break;
+	case MAVLINK_MSG_ID_OFFBOARD_VTOL_NPFG:
+		handle_message_offboard_vtol_npfg(msg);
+		break;
 #if !defined(CONSTRAINED_FLASH)
 
 	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
@@ -392,6 +395,60 @@ MavlinkReceiver::evaluate_target_ok(int command, int target_system, int target_c
 
 	return target_ok;
 }
+void MavlinkReceiver::handle_message_offboard_vtol_npfg(mavlink_message_t *msg)
+{
+    mavlink_offboard_vtol_npfg_t man;
+    mavlink_msg_offboard_vtol_npfg_decode(msg, &man);
+
+    const hrt_abstime now = hrt_absolute_time();
+
+    // 1) 更新 offboard_control_mode (告诉控制回路你要控制哪些量)
+    offboard_control_mode_s oc_mode{};
+    oc_mode.timestamp    = now;
+    oc_mode.position     = man.position;     // true
+    oc_mode.velocity     = man.velocity;     // true
+    oc_mode.acceleration = man.acceleration; // true (必须为true，控制回路才会采纳加速度设定值)
+    oc_mode.attitude     = man.attitude;
+    oc_mode.body_rate    = man.body_rate;
+    oc_mode.actuator     = man.actuator;
+
+    _offboard_control_mode_pub.publish(oc_mode);
+
+    // 2) 发布 trajectory_setpoint (具体的数值)
+    trajectory_setpoint_s traj{};
+    traj.timestamp = now;
+
+    // 位置 (NED)
+    traj.position[0] = man.x;
+    traj.position[1] = man.y;
+    traj.position[2] = man.z;
+
+    // 速度 (NED)
+    traj.velocity[0] = man.vx;
+    traj.velocity[1] = man.vy;
+    traj.velocity[2] = man.vz;
+
+    // 加速度 (NED) -> 这里是你新增的逻辑
+    // PX4 的 trajectory_setpoint 结构体里包含 acceleration[3]
+    traj.acceleration[0] = man.ax;
+    traj.acceleration[1] = man.ay;
+    traj.acceleration[2] = man.az;
+
+    // 偏航角 (如果不控制就设为 NAN)
+    traj.yaw      = NAN;
+    traj.yawspeed = NAN;
+
+    // Debug 打印 (如果需要看数据是否对齐)
+    /*
+    PX4_INFO("NPFG: Pos[%.1f %.1f %.1f] Vel[%.1f %.1f %.1f] Acc[%.1f %.1f %.1f]",
+         (double)traj.position[0], (double)traj.position[1], (double)traj.position[2],
+         (double)traj.velocity[0], (double)traj.velocity[1], (double)traj.velocity[2],
+         (double)traj.acceleration[0], (double)traj.acceleration[1], (double)traj.acceleration[2]);
+    */
+
+    _trajectory_setpoint_pub.publish(traj);
+}
+
 void
 MavlinkReceiver::handle_message_at_w_setpt(mavlink_message_t *msg)
 {
@@ -415,7 +472,8 @@ struct vehicle_thrust_acc_setpoint_s at_w_setpt = {};
         orb_publish(ORB_ID(vehicle_thrust_acc_setpoint), at_w_setpt_pub, &at_w_setpt);
     }
 }
-
+//我这里好像写的有问题handle_message_offboard_heartbeat 我最后是给_vehicle_control_mode_pub发了 然后还给_offboard_control_mode_pub发了 
+//实际上人家px4 自己在给position 指令的时候有支持_offboard_control_mode_pub 算了不管了 反正以前的mpcc能用
 void
 MavlinkReceiver::handle_message_offboard_heartbeat(mavlink_message_t *msg)
 {

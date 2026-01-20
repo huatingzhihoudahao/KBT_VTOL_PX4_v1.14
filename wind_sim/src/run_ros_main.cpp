@@ -44,7 +44,7 @@ ros::Subscriber targetSub,time_sub,howbig_sub,endSub,odom_sub;
 ros::Publisher  marker_pub,delay_odom_pub;
 double continue_time=0;
 double howbig_wind=0;
-float radius = 5; // 圆的半径
+float radius = 20; // 圆的半径
 
 nav_msgs::Odometry::ConstPtr now_pose;
 

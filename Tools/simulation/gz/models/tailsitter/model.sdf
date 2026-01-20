@@ -21,12 +21,12 @@
            <!-- 1.642 2.2360  -->
         <mass>2.0</mass>
         <inertia>
-          <ixx>0.07609000000000</ixx>
+          <ixx>0.02609000000000</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.014000000000</iyy>
+          <iyy>0.024000000000</iyy>
           <iyz>0</iyz>
-          <izz>0.07520000000000</izz>
+          <izz>0.04520000000000</izz>
         </inertia>
       </inertial>
       <collision name="collision">
@@ -793,7 +793,7 @@
       <turningDirection>ccw</turningDirection>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
-      <maxRotVelocity>1000.0</maxRotVelocity>
+      <maxRotVelocity>1200.0</maxRotVelocity>
       <motorConstant>8.54858e-06</motorConstant>
       <momentConstant>0.016</momentConstant>
       <commandSubTopic>command/motor_speed</commandSubTopic>
@@ -810,7 +810,7 @@
       <turningDirection>ccw</turningDirection>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
-      <maxRotVelocity>1000.0</maxRotVelocity>
+      <maxRotVelocity>1200.0</maxRotVelocity>
       <motorConstant>8.54858e-06</motorConstant>
       <momentConstant>0.016</momentConstant>
       <commandSubTopic>command/motor_speed</commandSubTopic>
@@ -827,7 +827,7 @@
       <turningDirection>cw</turningDirection>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
-      <maxRotVelocity>1000.0</maxRotVelocity>
+      <maxRotVelocity>1200.0</maxRotVelocity>
       <motorConstant>8.54858e-06</motorConstant>
       <momentConstant>0.016</momentConstant>
       <commandSubTopic>command/motor_speed</commandSubTopic>
@@ -844,7 +844,7 @@
       <turningDirection>cw</turningDirection>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
-      <maxRotVelocity>1000.0</maxRotVelocity>
+      <maxRotVelocity>1200.0</maxRotVelocity>
       <motorConstant>8.54858e-06</motorConstant>
       <momentConstant>0.016</momentConstant>
       <commandSubTopic>command/motor_speed</commandSubTopic>

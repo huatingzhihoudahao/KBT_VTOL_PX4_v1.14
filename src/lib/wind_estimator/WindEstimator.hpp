@@ -46,15 +46,47 @@
 #include "python/generated/fuse_airspeed.h"
 #include "python/generated/fuse_beta.h"
 #include "python/generated/init_wind_using_airspeed.h"
-
+#define CONFIG_NO_WIND
+#ifdef CONFIG_NO_WIND
+    static constexpr bool NO_WIND_MODE = true;
+#else
+    static constexpr bool NO_WIND_MODE = false;
+#endif
 using namespace time_literals;
 
 class WindEstimator
 {
 public:
-	WindEstimator() = default;
+	// WindEstimator() = default;
 	~WindEstimator() = default;
-
+// 自定义构造函数
+	WindEstimator()
+	{
+	#ifdef CONFIG_NO_WIND
+		// 无风模式初始化
+		_state(INDEX_W_N) = 0.0f;
+		_state(INDEX_W_E) = 0.0f;
+		_state(INDEX_TAS_SCALE) = 1.0f;
+		_P.setZero();
+		_P(INDEX_W_N, INDEX_W_N) = 0.001f;
+		_P(INDEX_W_E, INDEX_W_E) = 0.001f;
+		_P(INDEX_TAS_SCALE, INDEX_TAS_SCALE) = 0.0001f;
+		_initialised = true;
+		
+		// 设置过程噪声为0，防止状态变化
+		_wind_psd = 0.0f;
+		_tas_scale_psd = 0.0f;
+	#else
+		// 正常模式初始化
+		_state(INDEX_W_N) = 0.0f;
+		_state(INDEX_W_E) = 0.0f;
+		_state(INDEX_TAS_SCALE) = _scale_init;
+		_P.setZero();
+		_P(INDEX_W_N, INDEX_W_N) = sq(INITIAL_WIND_ERROR);
+		_P(INDEX_W_E, INDEX_W_E) = sq(INITIAL_WIND_ERROR);
+		_P(INDEX_TAS_SCALE, INDEX_TAS_SCALE) = 0.0001f;
+	#endif
+	}
 	// no copy, assignment, move, move assignment
 	WindEstimator(const WindEstimator &) = delete;
 	WindEstimator &operator=(const WindEstimator &) = delete;

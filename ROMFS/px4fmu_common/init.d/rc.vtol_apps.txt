@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# Standard apps for vtol: Attitude/Position estimator, Attitude/Position control.
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+###############################################################################
+#                       Begin Estimator group selection                       #
+###############################################################################
+
+ekf2 start &
+
+###############################################################################
+#                        End Estimator group selection                        #
+###############################################################################
+
+#
+# Start Control Allocator
+#
+control_allocator start
+
+airspeed_selector start
+
+vtol_att_control start
+
+mc_rate_control start vtol
+mc_att_control start vtol
+flight_mode_manager start
+mc_pos_control start vtol
+mc_hover_thrust_estimator start
+
+if param greater -s MC_AT_EN 0
+then
+	mc_autotune_attitude_control start
+fi
+
+fw_rate_control start vtol
+fw_att_control start vtol
+fw_pos_control start vtol
+#fw_autotune_attitude_control start vtol
+
+# Start Land Detector
+# Multicopter for now until we have something for VTOL
+#
+
+
+param set THR_P 0.001f
+param set THR_PP 0.00001f
+param set THR_BETA 0.0f
+param set THR_SFT_RATE  4.5f
+param set THR_SFT_ACC   3.5f
+
+param set MC_PITCHRATE_K 1.0f
+param set MC_PITCHRATE_P 0.22f
+param set MC_PITCHRATE_I 0.01f
+param set MC_PITCHRATE_D 0.001f
+param set THR_SFT_ACC   3.5f
+
+param set MC_ROLLRATE_K 1.1f
+param set MC_ROLLRATE_P 0.2f
+param set MC_ROLLRATE_I 0.01f
+param set MC_ROLLRATE_D 0.001f
+
+param set MC_YAWRATE_K 1.2f
+param set MC_YAWRATE_P 0.3f
+param set MC_YAWRATE_I 0.01f
+param set MC_YAWRATE_D 0.001f
+
+
+
+
+land_detector start vtol
+
+#thrust_acc_control start
+

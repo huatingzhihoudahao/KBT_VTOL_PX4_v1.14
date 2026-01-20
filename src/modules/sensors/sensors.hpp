@@ -88,6 +88,7 @@
 # include "vehicle_optical_flow/VehicleOpticalFlow.hpp"
 #endif // CONFIG_SENSORS_VEHICLE_OPTICAL_FLOW
 
+#include <uORB/topics/vehicle_local_position.h>
 using namespace sensors;
 using namespace time_literals;
 /**
@@ -181,7 +182,7 @@ private:
 
 	uORB::Subscription _diff_pres_sub {ORB_ID(differential_pressure)};
 	uORB::Subscription _vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
-
+	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position_groundtruth)};
 	uORB::Publication<airspeed_s>             _airspeed_pub{ORB_ID(airspeed)};
 
 	DataValidator	_airspeed_validator;		/**< data validator to monitor airspeed */

@@ -1,0 +1,294 @@
+#!/bin/sh
+#
+# @name Gazebo x500
+#
+# @type Quadrotor
+#
+
+# . ${R}etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.vtol_defaults
+
+PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
+PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=tailsitter}
+
+param set-default MAV_TYPE 20
+
+param set-default SIM_GZ_EN 1
+
+#  * Board rotation
+#  *
+#  * This parameter defines the rotation of the FMU board relative to the platform.
+#  *
+param set-default SENS_BOARD_ROT 24  # pitch rotation 90 deg
+
+# /**
+#  * Lock control surfaces in hover
+#  *
+#  * If set to 1 the control surfaces are locked at the disarmed value in multicopter mode.
+#  *
+#  * @boolean
+#  * @group VTOL Attitude Control
+#  */
+## TODO low pitch don't use!
+param set-default VT_ELEV_MC_LOCK 0  # unlock elevon servo
+
+# simulation gps
+param set-default SENS_EN_GPSSIM 1
+# simulation barometer
+param set-default SENS_EN_BAROSIM 0
+# simulation magenetometer
+param set-default SENS_EN_MAGSIM 1
+# simulation airspeed
+param set-default SENS_EN_ARSPDSIM 1
+
+# tailsitter setting to solve airspeed sim
+param set-default HILAB_ARSPDROT 1
+# bypass the flight checks without airspeed sensor
+# param set-default CBRK_AIRSPD_CHK 162128
+
+
+param set-default SIM_GPS_USED 40  # use 40 satellites
+
+param set-default CA_AIRFRAME 4		# 4：tailsitter
+param set-default CA_ROTOR_COUNT 4
+
+param set-default CA_ROTOR0_PX 0.525
+param set-default CA_ROTOR0_PY 0.525
+param set-default CA_ROTOR0_KM  0.05
+
+param set-default CA_ROTOR1_PX -0.525
+param set-default CA_ROTOR1_PY -0.525
+param set-default CA_ROTOR1_KM  0.05
+
+param set-default CA_ROTOR2_PX 0.525
+param set-default CA_ROTOR2_PY -0.525
+param set-default CA_ROTOR2_KM -0.05
+
+param set-default CA_ROTOR3_PX -0.525
+param set-default CA_ROTOR3_PY 0.525
+param set-default CA_ROTOR3_KM -0.05
+
+param set-default SIM_GZ_EC_FUNC1 101
+param set-default SIM_GZ_EC_FUNC2 102
+param set-default SIM_GZ_EC_FUNC3 103
+param set-default SIM_GZ_EC_FUNC4 104
+
+param set-default SIM_GZ_EC_MIN1 150
+param set-default SIM_GZ_EC_MIN2 150
+param set-default SIM_GZ_EC_MIN3 150
+param set-default SIM_GZ_EC_MIN4 150
+
+param set-default SIM_GZ_EC_MAX1 1000
+param set-default SIM_GZ_EC_MAX2 1000
+param set-default SIM_GZ_EC_MAX3 1000
+param set-default SIM_GZ_EC_MAX4 1000
+
+# servo roll pitch yaw
+param set-default SIM_GZ_SV_FUNC1 201
+param set-default SIM_GZ_SV_FUNC2 202
+param set-default SIM_GZ_SV_FUNC3 203
+
+# TODO: set 567 max and mini
+
+param set-default MPC_THR_HOVER 0.60
+
+## for simulation due to lift-drag-plugin features; use virtual Elevator
+param set-default CA_SV_CS_COUNT 0
+param set-default CA_SV_CS0_TYPE 1
+#  Control Surface ${i} roll torque scaling
+param set-default CA_SV_CS0_TRQ_R -0.8    # Control Surface ${i} roll torque scaling
+param set-default CA_SV_CS1_TYPE 2
+param set-default CA_SV_CS1_TRQ_R 0.8
+param set-default CA_SV_CS2_TYPE 3
+#  Control Surface ${i} pitch torque scaling
+param set-default CA_SV_CS2_TRQ_P 1
+
+## LYU: for real vehicle
+# param set-default CA_SV_CS_COUNT 2	# control surface
+# param set-default CA_SV_CS0_TYPE 5	# Control Surface ${i} type, 5: Left Elevon;  6: Right Elevon
+# param set-default CA_SV_CS0_TRQ_P 0.5   # Control Surface ${i} pitch torque scaling
+# param set-default CA_SV_CS0_TRQ_Y -0.5	# Control Surface ${i} yaw torque scaling (fixed wing frame: roll)
+# param set-default CA_SV_CS1_TYPE 6
+# param set-default CA_SV_CS1_TRQ_P 0.5
+# param set-default CA_SV_CS1_TRQ_Y 0.5
+
+# LYU: for real vehicle
+# param set-default PWM_MAIN_FUNC1 101
+# param set-default PWM_MAIN_FUNC2 102
+# param set-default PWM_MAIN_FUNC3 103
+# param set-default PWM_MAIN_FUNC4 104
+# param set-default PWM_MAIN_FUNC5 0
+# param set-default PWM_MAIN_FUNC6 201
+# param set-default PWM_MAIN_FUNC7 202
+# param set-default PWM_MAIN_REV 96 # invert both elevons
+
+# Single-EKF (for replay)
+# param set-default EKF2_MULTI_IMU 0
+# param set-default SENS_IMU_MODE 1
+
+## set fixed-wing parameters
+# param set-default FW_P_TC 0.6
+# param set-default FW_PR_FF 0.1
+# param set-default FW_PSP_OFF 2
+# param set-default FW_RR_FF 0.1
+# param set-default FW_RR_I 0.2
+# param set-default FW_RR_P 0.3
+# param set-default FW_THR_TRIM 0.35
+# param set-default FW_THR_MAX 0.8
+# param set-default FW_THR_MIN 0.05
+# param set-default FW_T_CLMB_MAX 6
+# param set-default FW_T_HRATE_FF 0.5
+# param set-default FW_T_SINK_MAX 3
+# param set-default FW_T_SINK_MIN 1.6
+
+## set MC param
+param set-default MC_AIRMODE 1 		#@value 0 Disabled; value 1 Roll/Pitch; value 2 Roll/Pitch/Yaw
+param set-default MPC_VEL_MANUAL 10
+param set-default MPC_XY_VEL_MAX 15
+param set-default MPC_Z_VEL_MAX_UP 5
+param set-default MPC_Z_VEL_MAX_DN 3
+
+## set FW param
+
+param set-default FW_PR_P 0.9
+param set-default FW_PSP_OFF 2
+param set-default FW_P_LIM_MIN -15
+param set-default FW_RR_FF 0.1
+param set-default FW_RR_P 0.3
+param set-default FW_THR_TRIM 0.35
+param set-default FW_THR_MAX 0.6
+param set-default FW_THR_MIN 0.15 # 15% 最小油门
+param set-default FW_T_CLMB_MAX 8
+param set-default FW_T_SINK_MAX 2.7
+param set-default FW_T_SINK_MIN 2.2
+param set-default FW_AIRSPD_TRIM 12
+
+## set transition param
+param set-default VT_ARSP_TRANS 6
+param set-default VT_B_TRANS_DUR 5
+param set-default VT_FW_DIFTHR_EN 1
+param set-default VT_FW_DIFTHR_S_Y 0.5
+param set-default VT_FW_DIFTHR_S_P 0.5
+param set-default VT_FW_DIFTHR_S_R 0.35
+param set-default VT_F_TRANS_DUR 5
+param set-default VT_TYPE 0
+
+
+
+# 必须检查的参数
+param set-default VT_TYPE 0              # Tailsitter类型
+param set-default VT_ARSP_TRANS 6    # 转换空速 (建议13-15 m/s)
+
+param set-default VT_FW_DIFTHR_S_R 1   # 横滚差分推力缩放
+param set-default VT_FW_DIFTHR_S_P 1   # 俯仰差分推力缩放  
+param set-default VT_FW_DIFTHR_S_Y 0.4   # 偏航差分推力缩放
+param set-default VT_F_TRANS_DUR 10       # 前向转换时间 (建议8秒)
+param set-default VT_TRANS_TIMEOUT 10    # 转换超时时间
+param set-default FW_THR_MAX 0.8
+param set-default FW_T_CLMB_MAX 5
+
+
+param set-default VT_ELEV_MC_LOCK 0     # 确保多旋翼模式不锁定舵面
+# 固定翼控制器参数
+param set-default FW_AIRSPD_TRIM 15      # 巡航空速
+param set-default FW_AIRSPD_MIN 12       # 最小空速
+
+param set-default FW_ARSP_MODE 0
+param set-default CBRK_AIRSPD_CHK 162128
+# 控制分配参数
+param set-default CA_AIRFRAME 4          # Tailsitter
+param set-default CA_ROTOR_COUNT 4       # 4个电机
+param set-default CA_SV_CS_COUNT 0       # 无控制舵面
+# =======================================================
+# 补充：控制分配矩阵 (Control Allocation Matrix)
+# 确保 FW 姿态指令 (R1, P1, Y1) 完全被分配给力矩
+# =======================================================
+
+
+
+param set-default WV_EN 0
+
+
+#----------------
+# =======================================================
+# 1. 转换控制与力矩最大化 (解决 Quad-chute 根源)
+# =======================================================
+param set-default VT_ARSP_TRANS 6        # 转换空速 (极低，降低转换难度)
+param set-default VT_F_TRANS_DUR 12      # 转换时间放宽
+param set-default VT_TRANS_TIMEOUT 15    # 转换超时时间放宽
+
+
+
+# =======================================================
+# 3. Quad-chute 灵敏度调整 (放宽跌落检测)
+# =======================================================
+# 警告：此操作会降低安全性，仅用于仿真调试。
+param set-default COM_VEL_ERR_MAX 20.0    # 速度误差限制放宽到 6.0 m/s
+param set-default COM_POS_MAX_ERR 1000.0    # 位置误差限制放宽到 6.0 m
+
+# =======================================================
+# 4. 确保 Failsafe 旁路
+# =======================================================
+param set-default CBRK_AIRSPD_CHK 162128 # 旁路空速检查
+param set-default SENS_EN_ARSPDSIM 1     # 启用空速仿真
+
+# 极端：大幅放宽姿态角速率限制 (解决瞬间超限)
+param set-default MC_ROLLRATE_MAX 360.0    # 允许的最大滚转角速率
+param set-default MC_PITCHRATE_MAX 360.0    # 允许的最大俯仰角速率
+
+param set-default EKF2_AID_MASK 0
+param set-default EKF2_GPS_V_GATE 5.0
+param set-default EKF2_TAU_VEL 0.1
+param set-default EKF2_MAX_ALT_ERR 15.0
+param set-default COM_FLT_ERR_T 0.1
+param set-default COM_POS_FS_E 0
+
+
+param set-default FW_AIRSPD_MIN 8.0  #当空速低于FW_AIRSPD_MIN 优先低头加速 增加油门
+param set-default VT_ARSP_TRANS 8.4 #VTOL从多旋翼模式转换到固定翼模式所需的最小空速。 比FW_AIRSPD_MIN稍高
+param set-default FW_AIRSPD_TRIM 12      # 巡航空速
+param set-default FW_AIRSPD_MAX 15    # 最大空速 20 m/s
+param set-default FW_THR_MAX 1.0
+param set-default VT_F_TRANS_DUR 10.0
+param set-default FW_ARSP_MODE 0.0
+param set-default VT_TYPE 0.0
+param set-default VT_FW_MIN_ALT 2.0
+param set-default NAV_FORCE_VT 0
+
+param set-default FW_THR_TRIM 0.5
+param set-default FW_THR_MAX 0.9
+param set-default FW_THR_MIN 0.3 # 15% 最小油门
+
+param set-default VT_F_TRANS_THR 0.5 #0.5
+param set-default CAL_MAG0_ROT -1
+param set-default CAL_MAG1_ROT -1
+param set-default CAL_MAG2_ROT -1
+param set-default CAL_MAG3_ROT -1
+param set-default SENS_BOARD_ROT 24
+param set-default VT_ELEV_MC_LOCK 1     # 确保多旋翼模式不锁定舵面
+param set-default VT_FW_DIFTHR_EN 7     #Bitmask   7
+# param set-default FW_THR_SLEW_MAX 0.33
+
+param set-default VT_FW_DIFTHR_S_R 1   # 横滚差分推力缩放 (最大化)
+param set-default VT_FW_DIFTHR_S_P 1   # 俯仰差分推力缩放 (最大化)
+param set-default VT_FW_DIFTHR_S_Y 0.1   # 偏航差分推力缩放 (提高)
+
+# =======================================================
+# 2. 固定翼姿态增益 (应对 L1 导航指令)
+# =======================================================
+param set-default FW_PR_P 0.08            # 俯仰P增益 (进一步提高)
+param set-default FW_RR_P 0.04            # 横滚P增益 (进一步提高)
+param set-default FW_R_LIM 65            # 最大滚角限制 (您已设置)
+param set-default FW_PR_FF 0.1
+
+param set-default FW_YR_P 0.05
+param set-default FW_YR_FF 0.0
+
+param set-default NPFG_DAMPING 0.75
+
+param set-default NPFG_PERIOD 12
+param set-default NPFG_ROLL_TC 0.1
+param set-default MIS_TAKEOFF_ALT 10
+param set-default NAV_ACC_RAD 2.0 
+param set-default NAV_FW_ALT_RAD 3.0 

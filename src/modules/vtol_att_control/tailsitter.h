@@ -50,7 +50,7 @@
 
 // [rad] Pitch threshold required for completing transition to fixed-wing in automatic transitions
 // static constexpr float PITCH_THRESHOLD_AUTO_TRANSITION_TO_FW = -1.05f; // -60°
-static constexpr float PITCH_THRESHOLD_AUTO_TRANSITION_TO_FW = -1.4f; // -60°
+static constexpr float PITCH_THRESHOLD_AUTO_TRANSITION_TO_FW = -1.4f;//-1.05f; //-1.4f; // -60°
 
 // [rad] Pitch threshold required for completing transition to hover in automatic transitions
 static constexpr float PITCH_THRESHOLD_AUTO_TRANSITION_TO_MC = -0.26f; // -15°

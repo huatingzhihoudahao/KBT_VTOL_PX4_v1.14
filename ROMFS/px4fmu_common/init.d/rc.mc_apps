@@ -85,11 +85,17 @@ param set THR_SFT_RATE  4.5f
 param set THR_SFT_ACC   3.5f
 
 param set MC_PITCHRATE_K 1.0f
-param set MC_PITCHRATE_P 0.5f
-param set MC_PITCHRATE_I 0.0f
-param set MC_PITCHRATE_D 0.02f
+param set MC_PITCHRATE_P 0.2f
+param set MC_PITCHRATE_I 0.1f
+param set MC_PITCHRATE_D 0.01f
 param set THR_SFT_ACC   3.5f
 
+param set MC_ROLLRATE_K 0.3f
+param set MC_ROLLRATE_I 0.5f
+param set MC_ROLLRATE_D 0.01f
 
+param set MC_YAWRATE_K 0.3f
+param set MC_YAWRATE_I 0.5f
+param set MC_YAWRATE_D 0.01f
 land_detector start multicopter
 thrust_acc_control start 

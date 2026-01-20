@@ -132,7 +132,7 @@ void windPluginPrivate::OnReceiveMessage(const gz::msgs::Vector3d& msg)
 
     // 将收到的向量赋值给 windDirection
     this->windDirection = math::Vector3d(x, y, z);
-    gzerr << "windDirection" << this->windDirection <<"\n";
+    // gzerr << "windDirection" << this->windDirection <<"\n";
 
     if_get_message=true;
     if_end_wind=false;
@@ -242,7 +242,7 @@ void windPluginPrivate::Update(EntityComponentManager &_ecm)
     forceI.Z()=0; 
   }
   Link link(this->linkEntity);
-  gzerr << "windDirection        " <<  sqrt(forceI.X()* forceI.X()+ forceI.Y()* forceI.Y()) <<"\n";
+  // gzerr << "windDirection        " <<  sqrt(forceI.X()* forceI.X()+ forceI.Y()* forceI.Y()) <<"\n";
   link.AddWorldWrench(_ecm, forceI, torqueI);
 
 

@@ -58,7 +58,7 @@ bool ThrustAccControl::init() {
     PX4_ERR("callback registration failed");
     return false;
   }
-
+  PX4_ERR("callback registration true");
   return true;
 }
 
@@ -77,8 +77,9 @@ void ThrustAccControl::parameters_updated() {
   // const Vector3f rate_k = Vector3f(_param_thr_p.get(), 0., 0.);
   _thr_p = _param_thr_p.get();
   _thr_pp =  _param_thr_PP.get();
-
+  _rollrate_i=_param_MC_ROLLRATE_I.get();
    PX4_WARN("_thr_pp %f  ",(double)_thr_pp);
+   PX4_WARN("_rollrate_i %f",(double)_rollrate_i);
   _delta_thr_bound = _param_delta_thr_bound.get();
   _timeout_acc = _param_thr_timeout_acc.get();
   _timeout_time = _param_sys_timeout_time.get() * 1e5;

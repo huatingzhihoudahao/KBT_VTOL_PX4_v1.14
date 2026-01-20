@@ -271,10 +271,12 @@ AirspeedModule::check_for_connected_airspeed_sensors()
 {
 	// check for new connected airspeed sensor
 	int detected_airspeed_sensors = 0;
-
+	// PX4_INFO("_param_airspeed_primary_index.get().. %f",(double)_param_airspeed_primary_index.get());
 	if (_param_airspeed_primary_index.get() > 0) {
 
+		// PX4_INFO("Checking for connected airspeed sensors... %f",(double)_airspeed_subs.size());
 		for (int i = 0; i < _airspeed_subs.size(); i++) {
+			// PX4_INFO("_airspeed_subs[i].advertised() index%f  TOrF%f",(double)i,(double)_airspeed_subs[i].advertised());
 			if (!_airspeed_subs[i].advertised()) {
 				break;
 			}

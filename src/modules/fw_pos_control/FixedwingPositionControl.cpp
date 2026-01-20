@@ -721,7 +721,10 @@ FixedwingPositionControl::set_control_mode_current(const hrt_abstime &now)
 	FW_POSCTRL_MODE commanded_position_control_mode = _control_mode_current;
 
 	_skipping_takeoff_detection = false;
-
+	PX4_INFO("FW POSCTRL: flag_control_position_enabled,%d",_control_mode.flag_control_position_enabled);
+	PX4_INFO("FW POSCTRL: flag_control_offboard_enabled,%d",_control_mode.flag_control_offboard_enabled);
+	PX4_INFO("FW POSCTRL: flag_control_auto_enabled,%d",_control_mode.flag_control_auto_enabled);
+	PX4_INFO("FW : _position_setpoint_current_valid,%d",_position_setpoint_current_valid);
 	if (((_control_mode.flag_control_auto_enabled && _control_mode.flag_control_position_enabled) ||
 	     _control_mode.flag_control_offboard_enabled) && (_position_setpoint_current_valid
 			     || _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE)) {
@@ -897,7 +900,7 @@ FixedwingPositionControl::control_auto(const float control_interval, const Vecto
 	    || current_sp.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
 		publishOrbitStatus(current_sp);
 	}
-
+	PX4_INFO("FW Position Control: position_sp_type=%u", position_sp_type);
 	switch (position_sp_type) {
 	case position_setpoint_s::SETPOINT_TYPE_IDLE:
 		_att_sp.thrust_body[0] = 0.0f;
@@ -1035,99 +1038,388 @@ FixedwingPositionControl::handle_setpoint_type(const position_setpoint_s &pos_sp
 	return position_sp_type;
 }
 
-void
-FixedwingPositionControl::control_auto_position(const float control_interval, const Vector2d &curr_pos,
-		const Vector2f &ground_speed, const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr)
+// void
+// FixedwingPositionControl::control_auto_position(const float control_interval, const Vector2d &curr_pos,
+// 		const Vector2f &ground_speed, const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr)
+// {
+// 	const float acc_rad = _npfg.switchDistance(500.0f);
+// 	float tecs_fw_thr_min;
+// 	float tecs_fw_thr_max;
+
+// 	if (pos_sp_curr.gliding_enabled) {
+// 		/* enable gliding with this waypoint */
+// 		_tecs.set_speed_weight(2.0f);
+// 		tecs_fw_thr_min = 0.0;
+// 		tecs_fw_thr_max = 0.0;
+
+// 	} else {
+// 		tecs_fw_thr_min = _param_fw_thr_min.get();
+// 		tecs_fw_thr_max = _param_fw_thr_max.get();
+// 	}
+
+// 	// waypoint is a plain navigation waypoint
+// 	float position_sp_alt = pos_sp_curr.alt;
+
+// 	// Altitude first order hold (FOH)
+// 	if (_position_setpoint_previous_valid &&
+// 	    ((pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_POSITION) ||
+// 	     (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_LOITER))
+// 	   ) {
+// 		const float d_curr_prev = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, pos_sp_prev.lat,
+// 					  pos_sp_prev.lon);
+
+// 		// Do not try to find a solution if the last waypoint is inside the acceptance radius of the current one
+// 		if (d_curr_prev > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
+// 			// Calculate distance to current waypoint
+// 			const float d_curr = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, _current_latitude,
+// 					     _current_longitude);
+
+// 			// Save distance to waypoint if it is the smallest ever achieved, however make sure that
+// 			// _min_current_sp_distance_xy is never larger than the distance between the current and the previous wp
+// 			_min_current_sp_distance_xy = math::min(d_curr, _min_current_sp_distance_xy, d_curr_prev);
+
+// 			// if the minimal distance is smaller than the acceptance radius, we should be at waypoint alt
+// 			// navigator will soon switch to the next waypoint item (if there is one) as soon as we reach this altitude
+// 			if (_min_current_sp_distance_xy > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
+// 				// The setpoint is set linearly and such that the system reaches the current altitude at the acceptance
+// 				// radius around the current waypoint
+// 				const float delta_alt = (pos_sp_curr.alt - pos_sp_prev.alt);
+// 				const float grad = -delta_alt / (d_curr_prev - math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)));
+// 				const float a = pos_sp_prev.alt - grad * d_curr_prev;
+
+// 				position_sp_alt = a + grad * _min_current_sp_distance_xy;
+// 			}
+// 		}
+// 	}
+
+// 	float target_airspeed = adapt_airspeed_setpoint(control_interval, pos_sp_curr.cruising_speed,
+// 				_param_fw_airspd_min.get(), ground_speed);
+
+// 	Vector2f curr_pos_local{_local_pos.x, _local_pos.y};
+// 	Vector2f curr_wp_local = _global_local_proj_ref.project(pos_sp_curr.lat, pos_sp_curr.lon);
+
+// 	_npfg.setAirspeedNom(target_airspeed * _eas2tas);
+// 	_npfg.setAirspeedMax(_param_fw_airspd_max.get() * _eas2tas);
+
+// 	if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(pos_sp_curr.vx) && PX4_ISFINITE(pos_sp_curr.vy)) {
+// 		// Navigate directly on position setpoint and path tangent
+// 		matrix::Vector2f velocity_2d(pos_sp_curr.vx, pos_sp_curr.vy);
+// 		float curvature = PX4_ISFINITE(_pos_sp_triplet.current.loiter_radius) ? 1 / _pos_sp_triplet.current.loiter_radius :
+// 				  0.0f;
+// 		navigatePathTangent(curr_pos_local, curr_wp_local, velocity_2d.normalized(), ground_speed,
+// 				    _wind_vel, curvature);
+
+// 	} else if (_position_setpoint_previous_valid && pos_sp_prev.type != position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+// 		Vector2f prev_wp_local = _global_local_proj_ref.project(pos_sp_prev.lat, pos_sp_prev.lon);
+// 		navigateWaypoints(prev_wp_local, curr_wp_local, curr_pos_local, ground_speed, _wind_vel);
+
+// 	} else {
+// 		navigateWaypoint(curr_wp_local, curr_pos_local, ground_speed, _wind_vel);
+// 	}
+
+// 	_att_sp.roll_body = _npfg.getRollSetpoint();
+// 	target_airspeed = _npfg.getAirspeedRef() / _eas2tas;
+
+// 	_att_sp.yaw_body = _yaw; // yaw is not controlled, so set setpoint to current yaw
+
+// 	tecs_update_pitch_throttle(control_interval,
+// 				   position_sp_alt,
+// 				   target_airspeed,
+// 				   radians(_param_fw_p_lim_min.get()),
+// 				   radians(_param_fw_p_lim_max.get()),
+// 				   tecs_fw_thr_min,
+// 				   tecs_fw_thr_max,
+// 				   _param_sinkrate_target.get(),
+// 				   _param_climbrate_target.get());
+// 	// PX4_WARN("FW Position Control: pos_sp_curr vz=%.4f", -(double)pos_sp_curr.vz);
+// 	// tecs_update_pitch_throttle(control_interval,
+// 	// 			   position_sp_alt,
+// 	// 			   target_airspeed,
+// 	// 			   radians(_param_fw_p_lim_min.get()),
+// 	// 			   radians(_param_fw_p_lim_max.get()),
+// 	// 			   tecs_fw_thr_min,
+// 	// 			   tecs_fw_thr_max,
+// 	// 			   _param_sinkrate_target.get(),
+// 	// 			   _param_climbrate_target.get(),				   
+// 	// 			   tecs_status_s::TECS_MODE_NORMAL,
+// 	// 			   -(double)pos_sp_curr.vz);
+
+
+// }
+void FixedwingPositionControl::control_auto_position(const float control_interval, const Vector2d &curr_pos,
+        const Vector2f &ground_speed, const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr)
 {
-	const float acc_rad = _npfg.switchDistance(500.0f);
-	float tecs_fw_thr_min;
-	float tecs_fw_thr_max;
+	
+    // ================= [原有逻辑保持不变] =================
+    const float acc_rad = _npfg.switchDistance(500.0f);
+    float tecs_fw_thr_min;
+    float tecs_fw_thr_max;
 
-	if (pos_sp_curr.gliding_enabled) {
-		/* enable gliding with this waypoint */
-		_tecs.set_speed_weight(2.0f);
-		tecs_fw_thr_min = 0.0;
-		tecs_fw_thr_max = 0.0;
+    if (pos_sp_curr.gliding_enabled) {
+        _tecs.set_speed_weight(2.0f);
+        tecs_fw_thr_min = 0.0;
+        tecs_fw_thr_max = 0.0;
+    } else {
+        tecs_fw_thr_min = _param_fw_thr_min.get();
+        tecs_fw_thr_max = _param_fw_thr_max.get();
+    }
 
-	} else {
-		tecs_fw_thr_min = _param_fw_thr_min.get();
-		tecs_fw_thr_max = _param_fw_thr_max.get();
-	}
+    float position_sp_alt = pos_sp_curr.alt;
 
-	// waypoint is a plain navigation waypoint
-	float position_sp_alt = pos_sp_curr.alt;
+    // Altitude first order hold (FOH) logic... (原有高度保持逻辑，此处省略未改动代码，保持原样即可)
+    if (_position_setpoint_previous_valid &&
+        ((pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_POSITION) ||
+         (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_LOITER))
+       ) {
+        const float d_curr_prev = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, pos_sp_prev.lat, pos_sp_prev.lon);
+        if (d_curr_prev > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
+            const float d_curr = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, _current_latitude, _current_longitude);
+            _min_current_sp_distance_xy = math::min(d_curr, _min_current_sp_distance_xy, d_curr_prev);
+            if (_min_current_sp_distance_xy > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
+                const float delta_alt = (pos_sp_curr.alt - pos_sp_prev.alt);
+                const float grad = -delta_alt / (d_curr_prev - math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)));
+                const float a = pos_sp_prev.alt - grad * d_curr_prev;
+                position_sp_alt = a + grad * _min_current_sp_distance_xy;
+            }
+        }
+    }
 
-	// Altitude first order hold (FOH)
-	if (_position_setpoint_previous_valid &&
-	    ((pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_POSITION) ||
-	     (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_LOITER))
-	   ) {
-		const float d_curr_prev = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, pos_sp_prev.lat,
-					  pos_sp_prev.lon);
+    float target_airspeed = adapt_airspeed_setpoint(control_interval, pos_sp_curr.cruising_speed,
+                _param_fw_airspd_min.get(), ground_speed);
 
-		// Do not try to find a solution if the last waypoint is inside the acceptance radius of the current one
-		if (d_curr_prev > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
-			// Calculate distance to current waypoint
-			const float d_curr = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, _current_latitude,
-					     _current_longitude);
+    Vector2f curr_pos_local{_local_pos.x, _local_pos.y};
+    Vector2f curr_wp_local = _global_local_proj_ref.project(pos_sp_curr.lat, pos_sp_curr.lon);
 
-			// Save distance to waypoint if it is the smallest ever achieved, however make sure that
-			// _min_current_sp_distance_xy is never larger than the distance between the current and the previous wp
-			_min_current_sp_distance_xy = math::min(d_curr, _min_current_sp_distance_xy, d_curr_prev);
+    _npfg.setAirspeedNom(target_airspeed * _eas2tas);
+    _npfg.setAirspeedMax(_param_fw_airspd_max.get() * _eas2tas);
 
-			// if the minimal distance is smaller than the acceptance radius, we should be at waypoint alt
-			// navigator will soon switch to the next waypoint item (if there is one) as soon as we reach this altitude
-			if (_min_current_sp_distance_xy > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
-				// The setpoint is set linearly and such that the system reaches the current altitude at the acceptance
-				// radius around the current waypoint
-				const float delta_alt = (pos_sp_curr.alt - pos_sp_prev.alt);
-				const float grad = -delta_alt / (d_curr_prev - math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)));
-				const float a = pos_sp_prev.alt - grad * d_curr_prev;
 
-				position_sp_alt = a + grad * _min_current_sp_distance_xy;
-			}
-		}
-	}
+    // // ================= [修改 1] NPFG 导航执行：注入 Python 传来的曲率 =================
+    // if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(pos_sp_curr.vx) && PX4_ISFINITE(pos_sp_curr.vy)) {
+        
+    //     matrix::Vector2f velocity_2d(pos_sp_curr.vx, pos_sp_curr.vy);
+        
+    //     // 读取 Python acc[1] 作为曲率 (k_lat)
+    //     float curvature = 0.00000001f;
+    //     if (PX4_ISFINITE(outside_ax)) {
+    //         curvature = outside_ax;
+    //     }
+        
+    //     // 执行 NPFG，此时它会计算 (曲率前馈 + 误差反馈)
+    //     navigatePathTangent(curr_pos_local, curr_wp_local, velocity_2d.normalized(), ground_speed,
+    //                 _wind_vel, curvature);
 
-	float target_airspeed = adapt_airspeed_setpoint(control_interval, pos_sp_curr.cruising_speed,
-				_param_fw_airspd_min.get(), ground_speed);
+    // } 
+	// 准备给 NPFG 的曲率 (acc[1])
+    float curvature_for_npfg = 0.0f;
+	// PX4_WARN("-outside_ax= %.4f", -(double)outside_ax);
+    if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(outside_ax)) {
+        curvature_for_npfg = -outside_ax;
+    }
 
-	Vector2f curr_pos_local{_local_pos.x, _local_pos.y};
-	Vector2f curr_wp_local = _global_local_proj_ref.project(pos_sp_curr.lat, pos_sp_curr.lon);
+    // ============================================================
+    // 2. 执行 NPFG 导引 (计算水平需求)
+    // ============================================================
+// ============================================================
+    // 2. 执行 NPFG (更新水平需求)
+    // ============================================================
+    if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(pos_sp_curr.vx) && PX4_ISFINITE(pos_sp_curr.vy)) {
+        matrix::Vector2f velocity_2d(pos_sp_curr.vx, pos_sp_curr.vy);
+        
+        // 调用函数更新 _npfg 内部状态
+        navigatePathTangent(curr_pos_local, curr_wp_local, velocity_2d.normalized(), ground_speed,
+                    _wind_vel, curvature_for_npfg);
+                    
+    }
+	
+	else if (_position_setpoint_previous_valid && pos_sp_prev.type != position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+        Vector2f prev_wp_local = _global_local_proj_ref.project(pos_sp_prev.lat, pos_sp_prev.lon);
+        navigateWaypoints(prev_wp_local, curr_wp_local, curr_pos_local, ground_speed, _wind_vel);
+    } else {
+        navigateWaypoint(curr_wp_local, curr_pos_local, ground_speed, _wind_vel);
+    }
 
-	_npfg.setAirspeedNom(target_airspeed * _eas2tas);
-	_npfg.setAirspeedMax(_param_fw_airspd_max.get() * _eas2tas);
+//     // ================= [修改 2] Roll 计算重写：分离反馈与前馈 =================
 
-	if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(pos_sp_curr.vx) && PX4_ISFINITE(pos_sp_curr.vy)) {
-		// Navigate directly on position setpoint and path tangent
-		matrix::Vector2f velocity_2d(pos_sp_curr.vx, pos_sp_curr.vy);
-		float curvature = PX4_ISFINITE(_pos_sp_triplet.current.loiter_radius) ? 1 / _pos_sp_triplet.current.loiter_radius :
-				  0.0f;
-		navigatePathTangent(curr_pos_local, curr_wp_local, velocity_2d.normalized(), ground_speed,
-				    _wind_vel, curvature);
+//     // 1. 拆解 NPFG 输出
+//     float lat_accel_total = _npfg.getLateralAccel();      // 总需求 (FF + FB)
+//     float lat_accel_ff_raw = _npfg.getLateralAccelFF();   // 仅由曲率产生的前馈 (V^2 * K)
+//     PX4_WARN("lat_accel_total=%.4f, lat_accel_ff_raw=%.4f", (double)lat_accel_total, (double)lat_accel_ff_raw);	
+//     // 提取纯反馈项 (航向误差 + 循迹误差)
+//     float lat_accel_feedback = lat_accel_total- lat_accel_ff_raw;
 
-	} else if (_position_setpoint_previous_valid && pos_sp_prev.type != position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
-		Vector2f prev_wp_local = _global_local_proj_ref.project(pos_sp_prev.lat, pos_sp_prev.lon);
-		navigateWaypoints(prev_wp_local, curr_wp_local, curr_pos_local, ground_speed, _wind_vel);
+//     // 2. Part A: 计算反馈 Roll (使用标准公式，保持 PID 响应特性)
+//     //    roll_fb = atan( feedback_acc / g )
+//     float roll_feedback = atan2f(lat_accel_feedback, 9.81f);
 
-	} else {
-		navigateWaypoint(curr_wp_local, curr_pos_local, ground_speed, _wind_vel);
-	}
+//     // 3. Part B: 计算精确前馈 Roll (使用你的 Engineering Formula)
+//     float roll_feedforward_precise = 0.0f;
+// 	PX4_WARN("outside_az= %.4f", (double)outside_az);	
 
-	_att_sp.roll_body = _npfg.getRollSetpoint();
-	target_airspeed = _npfg.getAirspeedRef() / _eas2tas;
+//     // 只有在 Offboard 模式且数据有效时才计算精确前馈
+//     if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(outside_az)) {
+        
+//         // (1) 获取物理量
+//         // a_vert = V * gamma_dot (来自 Python acc[2] -> acceleration.z, 取反)
+//         float a_vert_ref = 0.0f;
+//         if (PX4_ISFINITE(outside_az)) {
+//             a_vert_ref = -outside_az;
+//         }
 
-	_att_sp.yaw_body = _yaw; // yaw is not controlled, so set setpoint to current yaw
+//         // Gamma (航迹角)
+//         float vel_n = pos_sp_curr.vx;
+//         float vel_e = pos_sp_curr.vy;
+//         float vel_d = pos_sp_curr.vz;
+//         float vel_horiz = sqrtf(vel_n*vel_n + vel_e*vel_e);
+//         float gamma = atan2f(-vel_d, vel_horiz); // NED Z向下，上为负
 
-	tecs_update_pitch_throttle(control_interval,
-				   position_sp_alt,
-				   target_airspeed,
-				   radians(_param_fw_p_lim_min.get()),
-				   radians(_param_fw_p_lim_max.get()),
-				   tecs_fw_thr_min,
-				   tecs_fw_thr_max,
-				   _param_sinkrate_target.get(),
-				   _param_climbrate_target.get());
+//         // // Alpha (攻角，建议写死或从参数读)
+//         // float alpha = radians(30.0f); 
+// // ================= [修改 START] 动态计算 Alpha =================
+        
+//         // 1. 计算估算攻角: Alpha = Pitch - Gamma
+//         // _pitch 是 FixedwingPositionControl 类的成员变量，代表当前飞机的实际俯仰角
+//         float alpha = _pitch - gamma;
+
+//         // (2) 准备公式参数
+//         float g = 9.81f;
+//         float cos_gamma = cosf(gamma);
+//         float sin_gamma = sinf(gamma);
+//         float cos_alpha = cosf(alpha);
+//         float sin_alpha = sinf(alpha);
+        
+//         // 保护
+//         if (cos_gamma < 0.1f) cos_gamma = 0.1f;
+
+//         // (3) 核心投影与受力分解
+//         // 将 NPFG 算出的水平曲率前馈 (lat_accel_ff_raw) 投影到机体侧向
+//         float L_lat_ff = lat_accel_ff_raw / cos_gamma;
+        
+//         // 垂向受力: 重力支撑 + 垂直机动向心力
+//         float L_vert_ff = g * cos_gamma + a_vert_ref;
+        
+//         // 总升力估算
+//         float L_total_ff = sqrtf(L_lat_ff*L_lat_ff + L_vert_ff*L_vert_ff);
+
+//         // (4) 代入精确公式
+//         // tan(phi) = (L_lat * cos_g) / (L_vert * cos_g * cos_a - L_total * sin_g * sin_a)
+//         float num_ff = L_lat_ff * cos_gamma;
+//         float den_ff = (L_vert_ff * cos_gamma * cos_alpha) - (L_total_ff * sin_gamma * sin_alpha);
+        
+//         roll_feedforward_precise = atan2f(num_ff, den_ff);
+// 		PX4_WARN("a_vert_ref=%.4f", (double)a_vert_ref);
+// 		PX4_WARN("L_lat_ff=%.4f, L_vert_ff=%.4f", (double)L_lat_ff, (double)L_vert_ff);
+// 		PX4_WARN("L_total_ff=%.4f, num_ff=%.4f, den_ff=%.4f", (double)L_total_ff, (double)num_ff, (double)den_ff);
+// 		PX4_WARN("gamma=%.4f, roll_feedforward_precise=%.4f", (double)gamma, (double)roll_feedforward_precise);
+//     }
+
+//     // 4. 融合输出 (Feedback + Precise Feedforward)
+//     float roll_final = roll_feedback+ roll_feedforward_precise;
+    
+//     // 赋值给态度设定点
+//     _att_sp.roll_body = constrain(roll_final, -radians(80.0f), radians(80.0f));
+
+
+
+
+// ============================================================
+    // 3. 全量 3D 精确滚转计算 (替代 _npfg.getRollSetpoint())
+    // ============================================================
+    
+    // A. 获取 NPFG 算出的 "水平总需求" (FF + FB)
+    float lat_accel_horizontal = _npfg.getLateralAccel(); 
+
+// B. 默认 Roll (标准公式)
+    float roll_cmd = atan2f(lat_accel_horizontal, 9.81f);
+
+    // // C. 启用 3D 精确公式 (仅在 Offboard 且有垂直前馈数据时)
+    // if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(outside_az)) {
+        
+    //     // 1. 物理量准备
+    //     float a_vert_ref = -outside_az; // 正值代表拉起
+        
+    //     // 计算 Gamma
+    //     float vel_n = pos_sp_curr.vx;
+    //     float vel_e = pos_sp_curr.vy;
+    //     float vel_d = pos_sp_curr.vz;
+	// 	float ground_speed_sq = vel_n*vel_n + vel_e*vel_e;
+        
+    //     // 使用更稳健的 Gamma 计算，防止 ground_speed 极小时的抖动
+    //     float gamma = 0.0f;
+    //     if (ground_speed_sq > 0.1f) {
+    //         gamma = atan2f(-vel_d, sqrtf(ground_speed_sq));
+    //     }
+		
+    //     // 计算 Alpha (动态)
+	// 	float alpha = 0;// _pitch - gamma;
+
+
+    //     // 2. 公式计算
+    //     float g = 9.81f;
+    //     float cos_gamma = cosf(gamma);
+    //     if (cos_gamma < 0.1f) cos_gamma = 0.1f;
+        
+    //     float sin_gamma = sinf(gamma);
+    //     float cos_alpha = cosf(alpha);
+    //     float sin_alpha = sinf(alpha);
+
+    //     // 分子: NPFG 的水平输出 (这就是你要的包含反馈+前馈的量)
+    //     float numerator = lat_accel_horizontal; 
+
+    //     // 分母: 3D 动力学修正
+    //     float L_lat_sq = (lat_accel_horizontal * lat_accel_horizontal) / (cos_gamma * cos_gamma);
+    //     float L_vert = g * cos_gamma + a_vert_ref;
+    //     float L_total = sqrtf(L_lat_sq + L_vert * L_vert);
+
+    //     float denominator = (L_vert * cos_gamma * cos_alpha) - (L_total * sin_gamma * sin_alpha);
+
+    //     // 3. 得到精确 Roll
+    //     roll_cmd = atan2f(numerator, denominator);
+    
+	// 	PX4_WARN("3D gamma: %.2f alpha=%.2f  pitch=%.2f)", (double)degrees(gamma),(double)degrees(alpha), (double)degrees(_pitch));
+    //     // [Debug Log]
+    //     PX4_WARN("3D Roll: %.2f (NPFG=%.2f, az=%.2f)", (double)degrees(roll_cmd), (double)degrees(atan2f(lat_accel_horizontal, 9.81f)), (double)a_vert_ref);
+    // }
+
+    // D. 赋值并限幅
+    _att_sp.roll_body = constrain(roll_cmd, -radians(180.0f), radians(180.0f));
+
+    // 更新其他状态
+    target_airspeed = _npfg.getAirspeedRef() / _eas2tas;
+    _att_sp.yaw_body = _yaw; 
+
+    // ================= [修改 3] Pitch 前馈叠加 =================
+    
+    // 1. TECS 更新 (基础 Pitch)
+    tecs_update_pitch_throttle(control_interval,
+                   position_sp_alt,
+                   target_airspeed,
+                   radians(_param_fw_p_lim_min.get()),
+                   radians(_param_fw_p_lim_max.get()),
+                   tecs_fw_thr_min,
+                   tecs_fw_thr_max,
+                   _param_sinkrate_target.get(),
+                   _param_climbrate_target.get());
+
+    // // 2. 叠加垂直加速度前馈 (a_vert -> Pitch)
+    // //    仅在 Offboard 模式生效
+    // if (_control_mode.flag_control_offboard_enabled) {
+    //     float a_vert_ref = 0.0f;
+    //     if (PX4_ISFINITE(outside_az)) {
+    //         a_vert_ref = -outside_az;
+    //     }
+
+    //     // 系数: 0.15 rad/g (约8.5度/g)
+    //     float K_pitch_ff = 0.15f; 
+    //     float pitch_feedforward = (a_vert_ref / 9.81f) * K_pitch_ff;
+
+    //     _att_sp.pitch_body += pitch_feedforward;
+        
+    //     // 再次限幅
+    //     _att_sp.pitch_body = constrain(_att_sp.pitch_body, 
+    //                                  radians(_param_fw_p_lim_min.get()), 
+    //                                  radians(_param_fw_p_lim_max.get()));
+    // }
 }
 
 void
@@ -2089,11 +2381,12 @@ FixedwingPositionControl::control_manual_position(const float control_interval, 
 	_att_sp.thrust_body[0] = min(get_tecs_thrust(), throttle_max);
 	_att_sp.pitch_body = get_tecs_pitch();
 }
-
+//这里或许影响切换的时候
 float
 FixedwingPositionControl::get_tecs_pitch()
 {
 	if (_tecs_is_running) {
+		// PX4_INFO("get_pitch_setpoint.%f",(double)_tecs.get_pitch_setpoint());
 		return _tecs.get_pitch_setpoint() + radians(_param_fw_psp_off.get());
 	}
 
@@ -2231,16 +2524,28 @@ FixedwingPositionControl::Run()
 					_pos_sp_triplet.current.vx = trajectory_setpoint.velocity[0];
 					_pos_sp_triplet.current.vy = trajectory_setpoint.velocity[1];
 					_pos_sp_triplet.current.vz = trajectory_setpoint.velocity[2];
-
+					 outside_ax= trajectory_setpoint.acceleration[0];
+					 outside_ay= trajectory_setpoint.acceleration[1];
+					 outside_az= trajectory_setpoint.acceleration[2];
 					if (Vector3f(trajectory_setpoint.acceleration).isAllFinite()) {
-						Vector2f velocity_sp_2d(trajectory_setpoint.velocity[0], trajectory_setpoint.velocity[1]);
-						Vector2f normalized_velocity_sp_2d = velocity_sp_2d.normalized();
-						Vector2f acceleration_sp_2d(trajectory_setpoint.acceleration[0], trajectory_setpoint.acceleration[1]);
-						Vector2f acceleration_normal = acceleration_sp_2d - acceleration_sp_2d.dot(normalized_velocity_sp_2d) *
-									       normalized_velocity_sp_2d;
-						float direction = -normalized_velocity_sp_2d.cross(acceleration_normal.normalized());
-						_pos_sp_triplet.current.loiter_radius = direction * velocity_sp_2d.norm() * velocity_sp_2d.norm() /
-											acceleration_normal.norm();
+						// Vector2f velocity_sp_2d(trajectory_setpoint.velocity[0], trajectory_setpoint.velocity[1]);
+						// Vector2f normalized_velocity_sp_2d = velocity_sp_2d.normalized();
+						// Vector2f acceleration_sp_2d(trajectory_setpoint.acceleration[0], trajectory_setpoint.acceleration[1]);
+						// Vector2f acceleration_normal = acceleration_sp_2d - acceleration_sp_2d.dot(normalized_velocity_sp_2d) *
+						// 			       normalized_velocity_sp_2d;
+						// float direction = -normalized_velocity_sp_2d.cross(acceleration_normal.normalized());
+						// _pos_sp_triplet.current.loiter_radius = direction * velocity_sp_2d.norm() * velocity_sp_2d.norm() /
+						// 					acceleration_normal.norm();
+					// 1. 从 acceleration[0] 读取曲率 (对应 Python 的 acceleration_sp.y)  FHR debug
+						
+						float k_cmd = -trajectory_setpoint.acceleration[0]; 
+
+						// 2. 喂给 NPFG (直接用 k_cmd 算半径)
+						float radius = (fabsf(k_cmd) > 0.001f) ? (1.0f / k_cmd) : 0.0f;
+						// PX4_WARN("radius=%.4f, k_cmd=%.4f", (double)radius, (double)k_cmd);
+						// 注意：如果方向反了，这里加负号: -1.0f / k_cmd
+						_pos_sp_triplet.current.loiter_radius = radius;
+
 
 					} else {
 						_pos_sp_triplet.current.loiter_radius = NAN;
@@ -2321,7 +2626,7 @@ FixedwingPositionControl::Run()
 
 		// default to zero - is used (IN A HACKY WAY) to pass direct nose wheel steering via yaw stick to the actuators during auto takeoff
 		_att_sp.yaw_sp_move_rate = 0.0f;
-
+		// PX4_INFO("FW pos ctrl mode: %d", _control_mode_current);
 		if (_control_mode_current != FW_POSCTRL_MODE_AUTO_LANDING_STRAIGHT
 		    && _control_mode_current != FW_POSCTRL_MODE_AUTO_LANDING_CIRCULAR) {
 			reset_landing_state();
@@ -2387,7 +2692,47 @@ FixedwingPositionControl::Run()
 
 		}
 
-		if (_control_mode_current != FW_POSCTRL_MODE_OTHER) {
+
+// 1. 定义静态变量来记录“切换结束时刻”
+        static hrt_abstime transition_end_timestamp = 0;
+        static bool was_in_transition = false;
+
+        bool is_in_trans = _vehicle_status.in_transition_mode;
+        bool is_fw_mode = (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING);
+        
+        // 2. 捕捉下降沿：当从 Trans 变成 FW 时，记录当前时间
+        if (was_in_transition && !is_in_trans) {
+            transition_end_timestamp = hrt_absolute_time();
+            PX4_WARN(">>> Transition Finished! Holding Thrust for 2s...");
+        }
+        was_in_transition = is_in_trans;
+
+        // 3. 定义强行发布条件：
+        //    条件A: 正在 Transition 模式
+        //    条件B: 或者是 FW 模式，但是距离切换结束还不到 2.0秒 (2,000,000 us)
+        bool force_publish = (is_in_trans || 
+                             (is_fw_mode && (hrt_absolute_time() - transition_end_timestamp < 2000000)));
+
+        // 加上非落地保护
+        force_publish = force_publish && !_landed;
+
+
+    // 修改判断条件：如果是 OTHER 模式，但满足强行发布条件，也允许通过！
+    if (_control_mode_current != FW_POSCTRL_MODE_OTHER || force_publish) {
+
+// [核心补丁]
+            if (force_publish) {
+                float min_safe_thrust = _param_fw_thr_trim.get(); // 0.4
+                
+                // 只有当当前油门小于保底值时才覆盖 (避免限制了大油门加速)
+                if (_att_sp.thrust_body[0] < min_safe_thrust) {
+                    
+                    _att_sp.thrust_body[0] = min_safe_thrust;
+                    
+                }
+            }
+
+		// if (_control_mode_current != FW_POSCTRL_MODE_OTHER) {
 
 			if (_control_mode.flag_control_manual_enabled) {
 				_att_sp.roll_body = constrain(_att_sp.roll_body, -radians(_param_fw_r_lim.get()),
@@ -2404,7 +2749,9 @@ FixedwingPositionControl::Run()
 
 				const Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 				q.copyTo(_att_sp.q_d);
+				// [在此处插入以下代码] =======================================================
 
+				// =========================================================================
 				_att_sp.timestamp = hrt_absolute_time();
 				_attitude_sp_pub.publish(_att_sp);
 
@@ -2426,6 +2773,9 @@ FixedwingPositionControl::Run()
 			landing_gear.timestamp = hrt_absolute_time();
 			_landing_gear_pub.publish(landing_gear);
 		}
+
+        // =================================================================
+
 
 		// In Manual modes flaps and spoilers are directly controlled in the Attitude controller and not published here
 		if (_control_mode.flag_control_auto_enabled
@@ -2965,21 +3315,39 @@ void FixedwingPositionControl::navigateLoiter(const Vector2f &loiter_center, con
 			  loiter_center + unit_vec_center_to_closest_pt * radius, path_curvature);
 }
 
-void FixedwingPositionControl::navigatePathTangent(const matrix::Vector2f &vehicle_pos,
-		const matrix::Vector2f &position_setpoint,
-		const matrix::Vector2f &tangent_setpoint,
-		const matrix::Vector2f &ground_vel, const matrix::Vector2f &wind_vel, const float &curvature)
-{
-	if (tangent_setpoint.norm() <= FLT_EPSILON) {
-		// degenerate case: no direction. maintain the last npfg command.
-		return;
-	}
+// void FixedwingPositionControl::navigatePathTangent(const matrix::Vector2f &vehicle_pos,
+// 		const matrix::Vector2f &position_setpoint,
+// 		const matrix::Vector2f &tangent_setpoint,
+// 		const matrix::Vector2f &ground_vel, const matrix::Vector2f &wind_vel, const float &curvature)
+// {
+// 	if (tangent_setpoint.norm() <= FLT_EPSILON) {
+// 		// degenerate case: no direction. maintain the last npfg command.
+// 		return;
+// 	}
 
-	const Vector2f unit_path_tangent{tangent_setpoint.normalized()};
-	_target_bearing = atan2f(unit_path_tangent(1), unit_path_tangent(0));
-	_closest_point_on_path = position_setpoint;
-	_npfg.guideToPath(vehicle_pos, ground_vel, wind_vel, tangent_setpoint.normalized(), position_setpoint, curvature);
+// 	const Vector2f unit_path_tangent{tangent_setpoint.normalized()};
+// 	_target_bearing = atan2f(unit_path_tangent(1), unit_path_tangent(0));
+// 	_closest_point_on_path = position_setpoint;
+// 	_npfg.guideToPath(vehicle_pos, ground_vel, wind_vel, tangent_setpoint.normalized(), position_setpoint, curvature);
+// }
+
+void FixedwingPositionControl::navigatePathTangent(const matrix::Vector2f &vehicle_pos,
+        const matrix::Vector2f &position_setpoint,
+        const matrix::Vector2f &tangent_setpoint,
+        const matrix::Vector2f &ground_vel, const matrix::Vector2f &wind_vel, const float &curvature)
+{
+    if (tangent_setpoint.norm() <= FLT_EPSILON) {
+        return;
+    }
+
+    const Vector2f unit_path_tangent{tangent_setpoint.normalized()};
+    _target_bearing = atan2f(unit_path_tangent(1), unit_path_tangent(0));
+    _closest_point_on_path = position_setpoint;
+    
+    // 这里传入曲率，NPFG 会更新内部的 lateral_accel_ (包含反馈+前馈)
+    _npfg.guideToPath(vehicle_pos, ground_vel, wind_vel, unit_path_tangent, position_setpoint, curvature);
 }
+
 
 void FixedwingPositionControl::navigateBearing(const matrix::Vector2f &vehicle_pos, float bearing,
 		const Vector2f &ground_vel, const Vector2f &wind_vel)
