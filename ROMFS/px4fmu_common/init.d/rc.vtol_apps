@@ -60,20 +60,20 @@ param set THR_BETA 0.0f
 param set THR_SFT_RATE  4.5f
 param set THR_SFT_ACC   3.5f
 
-param set MC_PITCHRATE_K 1.0f
-param set MC_PITCHRATE_P 0.15f
-param set MC_PITCHRATE_I 0.01f
-param set MC_PITCHRATE_D 0.001f
+param set MC_PITCHRATE_K 0.5f
+param set MC_PITCHRATE_P 0.14f #0.12f #0.12f  #0.22f
+param set MC_PITCHRATE_I 0.3f #0.3f  #0.5f      #0.02f
+param set MC_PITCHRATE_D 0.001f 
 param set THR_SFT_ACC   3.5f
 
-param set MC_ROLLRATE_K 1.1f
-param set MC_ROLLRATE_P 0.15f
-param set MC_ROLLRATE_I 0.01f
+param set MC_ROLLRATE_K 1.0f
+param set MC_ROLLRATE_P 0.12f
+param set MC_ROLLRATE_I 0.1f
 param set MC_ROLLRATE_D 0.001f
 
 param set MC_YAWRATE_K 1.0f
-param set MC_YAWRATE_P 0.2f
-param set MC_YAWRATE_I 0.01f
+param set MC_YAWRATE_P 0.22f #0.2f
+param set MC_YAWRATE_I 0.2f
 param set MC_YAWRATE_D 0.001f
 param set EKF2_MAG_DECL	3.22869873046875f
 param set THR_P	0.0010000000474974513

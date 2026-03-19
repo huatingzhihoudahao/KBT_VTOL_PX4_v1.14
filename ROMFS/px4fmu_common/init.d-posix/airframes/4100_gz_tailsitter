@@ -79,10 +79,10 @@ param set-default SIM_GZ_EC_MIN2 150
 param set-default SIM_GZ_EC_MIN3 150
 param set-default SIM_GZ_EC_MIN4 150
 
-param set-default SIM_GZ_EC_MAX1 1000
-param set-default SIM_GZ_EC_MAX2 1000
-param set-default SIM_GZ_EC_MAX3 1000
-param set-default SIM_GZ_EC_MAX4 1000
+param set-default SIM_GZ_EC_MAX1 2000
+param set-default SIM_GZ_EC_MAX2 2000
+param set-default SIM_GZ_EC_MAX3 2000
+param set-default SIM_GZ_EC_MAX4 2000
 
 # servo roll pitch yaw
 param set-default SIM_GZ_SV_FUNC1 201

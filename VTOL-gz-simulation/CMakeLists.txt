@@ -108,11 +108,19 @@ target_include_directories(${PROJECT_NAME}
 
 
 add_executable(run_pub_f src/run_pub_f.cpp)
- target_link_libraries(run_pub_f
-   PUBLIC
-   ${catkin_LIBRARIES}
+target_link_libraries(run_pub_f
+  PUBLIC
+  ${catkin_LIBRARIES}
   gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
- )
+)
+
+# 带风速设置的节点：订阅 /wind_cmd_vector 或 /wind_speed_direction，向插件发布真实空速
+add_executable(run_pub_f_with_wind src/run_pub_f_with_wind.cpp)
+target_link_libraries(run_pub_f_with_wind
+  PUBLIC
+  ${catkin_LIBRARIES}
+  gz-sim${GZ_SIM_VER}::gz-sim${GZ_SIM_VER}
+)
 
 # --------------------------------------------------------------------------- #
 # Install.

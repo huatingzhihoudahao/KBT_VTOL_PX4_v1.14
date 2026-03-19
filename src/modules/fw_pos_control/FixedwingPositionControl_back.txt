@@ -1210,14 +1210,11 @@ void FixedwingPositionControl::control_auto_position(const float control_interva
     //                 _wind_vel, curvature);
 
     // } 
-	// 曲率：MAVROS 插件 ENU→NED 后 ax=原ay、ay=原ax。原 NPFG 发 (0,k_lat,a_vert)→PX4 里 outside_ax=k_lat；GVF 发 (-k_lat,0,0)→outside_ay=-k_lat
+	// 准备给 NPFG 的曲率 (acc[1])
     float curvature_for_npfg = 0.0f;
-    if (_control_mode.flag_control_offboard_enabled) {
-        if (PX4_ISFINITE(outside_ax) && (fabsf(outside_ax) > 1e-9f)) {
-            curvature_for_npfg = -outside_ax;   // 原 NPFG：曲率在 PX4 的 ax（与 backup 一致）
-        } else if (PX4_ISFINITE(outside_ay) && (fabsf(outside_ay) > 1e-9f)) {
-            curvature_for_npfg = -outside_ay;   // GVF：曲率在 PX4 的 ay
-        }
+	// PX4_WARN("-outside_ax= %.4f", -(double)outside_ax);
+    if (_control_mode.flag_control_offboard_enabled && PX4_ISFINITE(outside_ax)) {
+        curvature_for_npfg = -outside_ax;
     }
 
     // ============================================================
@@ -1391,35 +1388,10 @@ void FixedwingPositionControl::control_auto_position(const float control_interva
     target_airspeed = _npfg.getAirspeedRef() / _eas2tas;
     _att_sp.yaw_body = _yaw; 
 
-    // ================= [修改 3] TECS：仅 GVF 且 vz 明显非零时把 vz 当爬升率；否则与 NPFG 一致走高度环 =================
-    // GVF_USE_CLIMB_RATE=False 时 Python 发 vz=0，此处不进入 use_vz，走 else 分支，TECS 用高度误差反馈（与 NPFG 一致）
-    const bool use_vz_as_climb = _control_mode.flag_control_offboard_enabled
-                                && PX4_ISFINITE(pos_sp_curr.vz)
-                                && (fabsf(pos_sp_curr.vz) > 1e-6f)
-                                && (fabsf(outside_ax) < 1e-9f)
-                                && PX4_ISFINITE(outside_ay) && (fabsf(outside_ay) > 1e-9f);
-    if (use_vz_as_climb) {
-        // 爬升率 = GVF 前馈 + 高度误差反馈，既跟路径爬升又不会丢高度环
-        const float climb_rate_ff = -pos_sp_curr.vz;
-        const float alt_error = position_sp_alt - _current_altitude;
-        const float GVF_ALT_FB_GAIN = 0.25f;
-        float climb_rate_sp = climb_rate_ff + GVF_ALT_FB_GAIN * alt_error;
-        climb_rate_sp = math::constrain(climb_rate_sp,
-                                        -_param_sinkrate_target.get(),
-                                        _param_climbrate_target.get());
-        tecs_update_pitch_throttle(control_interval,
-                   position_sp_alt,
-                   target_airspeed,
-                   radians(_param_fw_p_lim_min.get()),
-                   radians(_param_fw_p_lim_max.get()),
-                   tecs_fw_thr_min,
-                   tecs_fw_thr_max,
-                   _param_sinkrate_target.get(),
-                   _param_climbrate_target.get(),
-                   false,
-                   climb_rate_sp);
-    } else {
-        tecs_update_pitch_throttle(control_interval,
+    // ================= [修改 3] Pitch 前馈叠加 =================
+    
+    // 1. TECS 更新 (基础 Pitch)
+    tecs_update_pitch_throttle(control_interval,
                    position_sp_alt,
                    target_airspeed,
                    radians(_param_fw_p_lim_min.get()),
@@ -1428,7 +1400,6 @@ void FixedwingPositionControl::control_auto_position(const float control_interva
                    tecs_fw_thr_max,
                    _param_sinkrate_target.get(),
                    _param_climbrate_target.get());
-    }
 
     // // 2. 叠加垂直加速度前馈 (a_vert -> Pitch)
     // //    仅在 Offboard 模式生效

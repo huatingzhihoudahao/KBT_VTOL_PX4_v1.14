@@ -155,6 +155,11 @@ public:
   double vy_from_odom ;
   double vz_from_odom ;
 
+  /// \brief wind velocity (m/s), same frame as vel: when get_v_from_odom use NED (x North, y East, z Down); when using sim use Gazebo world ENU (x East, y North, z Up). true airspeed: vel_air = vel - wind
+  double wind_x{0.0};
+  double wind_y{0.0};
+  double wind_z{0.0};
+
   bool get_q_from_imu{false};
   bool get_v_from_odom{false};
 public:
@@ -164,6 +169,7 @@ public:
 public:
   void OnReceiveMessage(const gz::msgs::Quaternion& msg);
   void OnReceiveMessage2(const gz::msgs::Vector3d& msg);
+  void OnReceiveWind(const gz::msgs::Vector3d& msg);
 };
 void AerodynamicsPluginPrivate::OnReceiveMessage(const gz::msgs::Quaternion& msg){
 #ifdef align_by_gazebo_orientation
@@ -185,6 +191,11 @@ void AerodynamicsPluginPrivate::OnReceiveMessage2(const gz::msgs::Vector3d& msg)
     vy_from_odom= msg.y();
     vz_from_odom = msg.z();
 
+}
+void AerodynamicsPluginPrivate::OnReceiveWind(const gz::msgs::Vector3d& msg) {
+  wind_x = msg.x();
+  wind_y = msg.y();
+  wind_z = msg.z();
 }
 
 //////////////////////////////////////////////////
@@ -276,6 +287,7 @@ void AerodynamicsPluginPrivate::Load(const EntityComponentManager &_ecm,
     _ang_vel_pub = _node.Advertise<gz::msgs::Vector3d>("/" + model.Name(_ecm) + "/" + "ang_vel");
     _node.Subscribe("/q_from_ros_imu", &AerodynamicsPluginPrivate::OnReceiveMessage,this);
     _node.Subscribe("/v_from_ros_odom", &AerodynamicsPluginPrivate::OnReceiveMessage2,this);
+    _node.Subscribe("/wind_vector", &AerodynamicsPluginPrivate::OnReceiveWind, this);
     advertised = true;
   }
   // std::string actuator_topic = "/" + model_name + "/command/motor_speed";
@@ -319,7 +331,7 @@ void AerodynamicsPluginPrivate::Update(EntityComponentManager &_ecm)
   p_msg.set_z(pose.Z());  
   p_pub.Publish(p_msg);
   math::Vector3d vel;
-  if(!get_v_from_odom){ 
+  if(!get_v_from_odom){
    vel = worldLinVel->Data() ;//+ worldAngVel->Data().Cross(cpWorld);
   }
   else{
@@ -327,31 +339,24 @@ void AerodynamicsPluginPrivate::Update(EntityComponentManager &_ecm)
     vel.Y()=(vy_from_odom);
     vel.Z()=(vz_from_odom);
   }
-  //vel就是worldlinvel
-  if (vel.Length() <= 0.01)
+  // 真实空速 = 地速 - 风速（与 vel 同系：sim 时为 ENU，v_from_ros_odom 时为 NED）
+  math::Vector3d wind(wind_x, wind_y, wind_z);
+  math::Vector3d vel_air = vel - wind;
+
+  if (vel_air.Length() <= 0.01)
     const auto velI = math::Vector3d::Zero;
-  // else
-  //   const auto velI = vel.Normalized();
   math::Vector3d velB_FLU,velB;
   auto Q_frd2flu = math::Quaternion<double>(0, 1.0, 0, 0);
   if(!get_q_from_imu){
-      velB_FLU = pose.Rot().RotateVectorReverse(vel);
-
+      velB_FLU = pose.Rot().RotateVectorReverse(vel_air);
       velB = Q_frd2flu.RotateVectorReverse(velB_FLU);
   }
   else{
     math::Quaternion q_from_imu(q_from_imu_w, q_from_imu_x, q_from_imu_y, q_from_imu_z);
-    
-    velB = q_from_imu.RotateVectorReverse(vel);
+    velB = q_from_imu.RotateVectorReverse(vel_air);
   }
 
-  
-//明天弄一下姿态发出去  现在确信  气动中心是0   应该cpworld和pose是一样的  但vel还是和预期的不一样 
-  // TODO wrapper to use
-  // auto Q_frd2flu = math::Quaternion<double>(0, 1.0, 0, 0);
-
-  // auto velB = Q_frd2flu.RotateVectorReverse(velB_FLU);
-  // velB.Eog
+  // 传入 Aerodynamics 的是体轴真实空速，力/力矩按真实空速计算
   double vB_double[3] = {velB.X(), velB.Y(), velB.Z()};
   double fB_double[3] = {0};
   double mB_double[3] = {0};
@@ -425,9 +430,9 @@ void AerodynamicsPluginPrivate::Update(EntityComponentManager &_ecm)
   torqueB.Correct();
 
 
-  torqueB.X() = 0;//0.5*torqueB.X();//0;
-  torqueB.Y() = 0;
-  // torqueB.Z() = 0;
+  torqueB.X() = 0.5*torqueB.X();//roll
+  torqueB.Y() = 1*torqueB.Y(); //0.2*torqueB.Y();// 0;
+
 
 
   // torqueB.Y() = 0;

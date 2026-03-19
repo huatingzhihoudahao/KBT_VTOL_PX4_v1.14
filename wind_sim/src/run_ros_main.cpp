@@ -1,373 +1,241 @@
-
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <cmath>
+#include <random>
 
+// Gazebo Transport
 #include <gz/common/Profiler.hh>
-#include <gz/plugin/Register.hh>
 #include <gz/transport/Node.hh>
+#include <gz/msgs.hh>
+#include <gz/transport.hh>
 
-#include <sdf/Element.hh>
-
-#include "gz/sim/Link.hh"
-#include "gz/sim/Model.hh"
-#include "gz/sim/Util.hh"
-
-#include "gz/sim/components/AngularVelocity.hh"
-#include "gz/sim/components/Inertial.hh"
-#include "gz/sim/components/Joint.hh"
-#include "gz/sim/components/JointPosition.hh"
-#include "gz/sim/components/LinearVelocity.hh"
-#include "gz/sim/components/Link.hh"
-#include "gz/sim/components/Name.hh"
-#include "gz/sim/components/ExternalWorldWrenchCmd.hh"
-#include "gz/sim/components/Pose.hh"
-// #include "gz/msgs/wrench.pb.h"
-#include "gz/msgs.hh"
-#include "gz/transport.hh"
-#include <memory>
-#include <gz/sim/System.hh>
+// ROS
 #include <ros/ros.h>
-#include "gz/transport.hh"
 #include <std_msgs/Float64.h>
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Vector3.h> // 新增：用于发布 PlotJuggler 调试数据
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_listener.h>
-#include <string>
 #include <visualization_msgs/MarkerArray.h>
+
 using namespace std;
+
+// --- 全局变量 ---
 gz::transport::Node node;
-gz::transport::Node::Publisher pub,pub2;
-ros::Subscriber targetSub,time_sub,howbig_sub,endSub,odom_sub;
-ros::Publisher  marker_pub,delay_odom_pub;
-double continue_time=0;
-double howbig_wind=0;
-float radius = 20; // 圆的半径
+gz::transport::Node::Publisher pub_wind_cmd, pub_wind_end;
+ros::Subscriber targetSub, howbig_sub, odom_sub;
+ros::Publisher marker_pub, delay_odom_pub;
+ros::Publisher pub_debug; // 新增：调试话题发布者
 
+// --- 风场基础参数 (由话题/Rviz控制) ---
+double base_wind_magnitude = 0.0;    // 基础风速
+double base_wind_dir_yaw = 0.0;      // 基础风向角度 (弧度)
+geometry_msgs::Quaternion wind_orientation; // Rviz显示用
+
+// --- 波动参数配置 ---
+const double REF_HEIGHT = 20.0;      // 基准高度
+const double GUST_STD_DEV = 1.0;     // 阵风标准差 (m/s)
+const double TURB_STD_DEV = 0.25;    // 风向扰动标准差 (rad)
+
+// --- 随机数生成器 ---
+std::random_device rd;
+std::mt19937 gen(rd());
+std::normal_distribution<> noise_mag(0.0, GUST_STD_DEV); 
+std::normal_distribution<> noise_dir(0.0, TURB_STD_DEV); 
+
+// --- 固定区域参数 ---
+const double CENTER_X = 0.0;
+const double CENTER_Y = 0.0;
+const double CENTER_Z = 0.0;
+const float RADIUS = 200.0;
+
+// --- 无人机状态 ---
 nav_msgs::Odometry::ConstPtr now_pose;
+bool have_odom = false;
 
-// std::string filename = "/home/cybird/文档/new_px4/wind_sim/wind2.csv";
-// std::ofstream outFile("/home/cybird/文档/new_px4/wind_sim/wind.csv");
-std::string filename = ("/home/cybird/下载/px4-n/px4-v1.14.0-stable/wind_sim/wind.csv");
-std::ofstream outFile("/home/cybird/下载/px4-n/px4-v1.14.0-stable/wind_sim/wind_sim_out.csv");
-
-int count_wind_area=0;
-struct windaera{
-  double center_x=0;
-  double center_y=0;
-  double center_z=0;
-
-  double wind_x=0;
-  double wind_y=0;
-  double orientation_x=0;
-  double orientation_y=0;
-  double orientation_z=0;
-  double orientation_w=1;
-};
-bool have_odom=false;
-std::vector<windaera> Areas;
-bool if_have_prepared_file=true;
+// --- 延迟里程计相关 ---
 vector<nav_msgs::Odometry> odom_buffer;
 ros::Time get_cmdtime;
-
 nav_msgs::Odometry delay_odom;
-bool have_delay_odom=false;
+bool have_delay_odom = false;
+
+
+// --- 回调函数 ---
+
+// 1. 设置基础风向
 void goal_Cb(const geometry_msgs::PoseStamped::ConstPtr& msg){    
-    if (if_have_prepared_file) {
-        return;
-    }
-    else{
-      std::cerr << "dont have a prepared file ,need new 3 area to record" << std::endl;
+    base_wind_dir_yaw = tf::getYaw(msg->pose.orientation);
+    wind_orientation = msg->pose.orientation;
+    std::cout << "[Wind Set] Base Direction Yaw: " << base_wind_dir_yaw * 180.0 / M_PI << " deg" << std::endl;
+}
 
-      count_wind_area++;
-            // Extract yaw angle
-      if(count_wind_area<=3){
-        double yaw = tf::getYaw(msg->pose.orientation);
-        double wind_x = cos(yaw);
-        double wind_y = sin(yaw);
+// 2. 设置基础风速
+void howbig_Cb(const std_msgs::Float64::ConstPtr& msg){
+    base_wind_magnitude = msg->data;
+    std::cout << "[Wind Set] Base Magnitude: " << base_wind_magnitude << " m/s" << std::endl;
+}
 
-        windaera Area;
-        Area.center_x= msg->pose.position.x;
-        Area.center_y= msg->pose.position.y;
-        Area.center_z= 1.1;
-        Area.wind_x=wind_x;
-        Area.wind_y=wind_y;
-
-        Area.orientation_x=msg->pose.orientation.x;
-        Area.orientation_y=msg->pose.orientation.y;
-        Area.orientation_z=msg->pose.orientation.z;
-        Area.orientation_w=msg->pose.orientation.w;
-
-        Areas.push_back(Area);
-
-
-        outFile << std::fixed << std::setprecision(6)
-                    << Area.center_x << ", " <<  Area.center_y << ", " << Area.center_z << ", "
-                    << wind_x << ", " << wind_y<<", " << Area.orientation_x<<", " <<Area.orientation_y<<", " << Area.orientation_z<<", " << Area.orientation_w<< "\n";
-
-
-        if(count_wind_area==3)
-            outFile.close();
-        
+// 3. 处理里程计
+void odom_cb(const nav_msgs::Odometry::ConstPtr& msg) {
+    now_pose = msg;
+    
+    if (!have_odom) {
+        have_odom = true;
+        odom_buffer.emplace_back(*now_pose);
+        get_cmdtime = ros::Time::now();
+        wind_orientation.w = 1.0; 
+    } else {
+        odom_buffer.emplace_back(*now_pose);
+        if ((ros::Time::now() - get_cmdtime).toSec() > 0.01) {
+            delay_odom = odom_buffer[0];
+            odom_buffer.erase(odom_buffer.begin());
+            have_delay_odom = true;
+            delay_odom_pub.publish(delay_odom);
         }
     }
-
-}
-void initialpose_Cb(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg){
-    gz::msgs::Vector3d flag;
-    pub2.Publish(flag);
 }
 
-void time_Cb(const std_msgs::Float64::ConstPtr& msg){
-
-continue_time=msg->data;
-std::cout<<"continue_time"<<continue_time<<std::endl;
-
-}
-void howbig_Cb(const std_msgs::Float64::ConstPtr& msg){
-
-  howbig_wind=msg->data;
-  std::cout<<"howbig_wind"<<howbig_wind<<std::endl;
-
-}
-void odom_cb(const nav_msgs::Odometry::ConstPtr& msg) {
-  now_pose=msg;
-  if (have_odom==false)
-	{
-
-    have_odom=true;
-		odom_buffer.emplace_back(*now_pose);
-		get_cmdtime = ros::Time::now();
-
-	}
-	else
-	{
-		odom_buffer.emplace_back(*now_pose);
-
-		if ((ros::Time::now() - get_cmdtime).toSec() > 0.01)//延迟0.05s
-		{
-			delay_odom = odom_buffer[0];
-      // std::cout<<"delay_odom"<<delay_odom.twist.twist.linear.x<<std::endl;
-			odom_buffer.erase(odom_buffer.begin());
-      have_delay_odom=true;
-      delay_odom_pub.publish(delay_odom);
-		}
-	}
-}
 void pub_delay_odom(const ros::TimerEvent& event) {
-    if (have_delay_odom) {
-        delay_odom_pub.publish(delay_odom);
-    }
+    if (have_delay_odom) delay_odom_pub.publish(delay_odom);
 }
 
+// 5. 主计算循环 (10Hz)
 void timerCallback(const ros::TimerEvent& event) {
-    if(! have_odom){
-      return;
-    }
-    int now_in_which_area=-999;
-    int seq_area=0;
-    for (int i=0;i<Areas.size();i++) {
-            windaera Area=Areas[i];
-            seq_area++;
-            visualization_msgs::MarkerArray marker_array;
-            visualization_msgs::Marker marker;
-            marker.header.frame_id = "map";
-            marker.header.stamp = ros::Time();
-            marker.ns = "circle";
-            marker.id =seq_area;
-            marker.type = visualization_msgs::Marker::SPHERE;
-            marker.action = visualization_msgs::Marker::ADD;
-            // std::cout<<"Area"<<Area.center_x<<Area.center_y<<Area.center_z<<std::endl;
-            marker.pose.position.x = Area.center_x;
-            marker.pose.position.y = Area.center_y;
-            marker.pose.position.z = Area.center_z;
-            marker.pose.orientation.x = Area.orientation_x;
-            marker.pose.orientation.y = Area.orientation_y;
-            marker.pose.orientation.z = Area.orientation_z;
-            marker.pose.orientation.w = Area.orientation_w;
+    if (!have_odom) return;
 
+    // --- A. Rviz 可视化 (画球和箭头) ---
+    visualization_msgs::MarkerArray marker_array;
+    visualization_msgs::Marker marker_sphere;
+    marker_sphere.header.frame_id = "map";
+    marker_sphere.header.stamp = ros::Time::now();
+    marker_sphere.ns = "wind_sphere";
+    marker_sphere.id = 0;
+    marker_sphere.type = visualization_msgs::Marker::SPHERE;
+    marker_sphere.action = visualization_msgs::Marker::ADD;
+    marker_sphere.pose.position.x = CENTER_X;
+    marker_sphere.pose.position.y = CENTER_Y;
+    marker_sphere.pose.position.z = CENTER_Z;
+    marker_sphere.pose.orientation.w = 1.0;
+    marker_sphere.scale.x = RADIUS * 2;
+    marker_sphere.scale.y = RADIUS * 2;
+    marker_sphere.scale.z = RADIUS * 2;
+    marker_sphere.color.a = 0.2; 
+    marker_sphere.color.r = 1.0;
+    marker_array.markers.push_back(marker_sphere);
 
-            marker.scale.x = radius * 2;
-            marker.scale.y = radius * 2;
-            marker.scale.z = radius * 2;
-            marker.color.a = 0.2; 
-            marker.color.r = 1.0;
-            marker.color.g = 0.0;
-            marker.color.b = 0.0;
+    visualization_msgs::Marker marker_arrow;
+    marker_arrow.header.frame_id = "map";
+    marker_arrow.header.stamp = ros::Time::now();
+    marker_arrow.ns = "wind_arrow_base";
+    marker_arrow.id = 1;
+    marker_arrow.type = visualization_msgs::Marker::ARROW;
+    marker_arrow.action = visualization_msgs::Marker::ADD;
+    marker_arrow.pose.position.x = CENTER_X;
+    marker_arrow.pose.position.y = CENTER_Y;
+    marker_arrow.pose.position.z = CENTER_Z;
+    marker_arrow.pose.orientation = wind_orientation; 
+    marker_arrow.scale.x = 20.0; 
+    marker_arrow.scale.y = 2.0;
+    marker_arrow.scale.z = 2.0;
+    marker_arrow.color.a = 1.0;
+    marker_arrow.color.r = 0.0;
+    marker_arrow.color.g = 1.0;
+    marker_array.markers.push_back(marker_arrow);
+    marker_pub.publish(marker_array);
 
-            marker_array.markers.push_back(marker);
+    // --- B. 物理计算与发布 ---
+    float drone_x = now_pose->pose.pose.position.x;
+    float drone_y = now_pose->pose.pose.position.y;
+    float drone_z = now_pose->pose.pose.position.z;
 
-        // 创建箭头
-            visualization_msgs::Marker marker_arrow;
-            marker_arrow.header.frame_id = "map";
-            marker_arrow.header.stamp = ros::Time::now();
-            marker_arrow.ns = "arrow";
-            marker_arrow.id = seq_area*10;
-            marker_arrow.type = visualization_msgs::Marker::ARROW;
-            marker_arrow.action = visualization_msgs::Marker::ADD;
-            marker_arrow.pose.position.x = Area.center_x;
-            marker_arrow.pose.position.y = Area.center_y;
-            marker_arrow.pose.position.z = Area.center_z;
-            marker_arrow.pose.orientation.x = Area.orientation_x;
-            marker_arrow.pose.orientation.y = Area.orientation_y;
-            marker_arrow.pose.orientation.z = Area.orientation_z;
-            marker_arrow.pose.orientation.w = Area.orientation_w;
-            marker_arrow.scale.x = 5.0; // 箭头的长度
-            marker_arrow.scale.y = 0.1; // 箭头的宽度
-            marker_arrow.scale.z = 0.1;
-            marker_arrow.color.a = 1.0;
-            marker_arrow.color.r = 0.0;
-            marker_arrow.color.g = 1.0;
-            marker_arrow.color.b = 0.0;
-            marker_array.markers.push_back(marker_arrow);
+    float distance = sqrt(pow(drone_x - CENTER_X, 2) + 
+                          pow(drone_y - CENTER_Y, 2) + 
+                          pow(drone_z - CENTER_Z, 2));
 
+    if (distance <= RADIUS) {
+        // 1. 高度切变
+        double shear_factor = std::max(0.0, (double)drone_z / REF_HEIGHT); 
+        double shear_mag = base_wind_magnitude * shear_factor;
 
+        // 2. 阵风
+        double current_gust = noise_mag(gen);
+        double final_mag = shear_mag + current_gust;
+        if (final_mag < 0) final_mag = 0; 
 
-            marker_pub.publish(marker_array);
-            float x = now_pose->pose.pose.position.x;
-            float y = now_pose->pose.pose.position.y;
-            float z = now_pose->pose.pose.position.z;
+        // 3. 湍流 (风向)
+        double current_turb_yaw = noise_dir(gen);
+        double final_yaw = base_wind_dir_yaw + current_turb_yaw;
 
-            float distance_to_center = sqrt(pow(x -Area.center_x, 2) + pow(y - Area.center_y, 2) + pow(z - Area.center_z, 2));
-            if (distance_to_center <= radius){
-              now_in_which_area=seq_area;
-              std::cout<<"now_in_which_area"<<now_in_which_area<<std::endl;
-            }
-    }
+        // 4. 发送给 Gazebo (Vector3d)
+        double final_wind_x = cos(final_yaw);
+        double final_wind_y = sin(final_yaw);
 
-    if (now_in_which_area>0){//1 2 3
         gz::msgs::Vector3d msg_wind;
-        double now_windx=Areas[now_in_which_area-1].wind_x;
-        double now_windy=Areas[now_in_which_area-1].wind_y;
-        msg_wind.set_x(now_windx);
-        msg_wind.set_y(now_windy);
-        msg_wind.set_z(howbig_wind); // Assuming z-component is not used
-        pub.Publish(msg_wind);
-    }
-    else{//-999
-        gz::msgs::Vector3d flag;
-        pub2.Publish(flag);
-    }
+        msg_wind.set_x(final_wind_x);
+        msg_wind.set_y(final_wind_y);
+        msg_wind.set_z(final_mag);
+        pub_wind_cmd.Publish(msg_wind);
 
-    // for(int i=0;i<100*continue_time;i++){
-    // gz::msgs::Vector3d msg_wind;
-    //     msg_wind.set_x(wind_x);
-    //     msg_wind.set_y(wind_y);
-    //     msg_wind.set_z(howbig_wind); // Assuming z-component is not used
-    // pub.Publish(msg_wind);
-    // ros::Duration(0.01).sleep();
-    // }
-    // gz::msgs::Vector3d flag;
-    // pub2.Publish(flag);
+        // --- C. 发送给 PlotJuggler (ROS Topic) ---
+        geometry_msgs::Vector3 debug_msg;
+        
+        // 转换弧度到角度 (0-360)
+        double deg = final_yaw * 180.0 / M_PI;
+        // 规范化到 0-360
+        while (deg < 0) deg += 360.0;
+        while (deg >= 360.0) deg -= 360.0;
 
+        debug_msg.x = deg;       // 风向 (0-360度)
+        debug_msg.y = final_mag; // 风速 (m/s)
+        debug_msg.z = 0;
+        
+        pub_debug.publish(debug_msg);
+
+    } else {
+        // 区域外停止风
+        gz::msgs::Vector3d flag; 
+        pub_wind_end.Publish(flag);
+
+        // 区域外 Debug 显示为 0
+        geometry_msgs::Vector3 debug_msg;
+        debug_msg.x = 0;
+        debug_msg.y = 0;
+        debug_msg.z = 0;
+        pub_debug.publish(debug_msg);
+    }
 }
 
 int main(int argc, char **argv) 
 {
-  ros::init(argc, argv, "get_windreal");
-  ros::NodeHandle nh;
+    ros::init(argc, argv, "realtime_wind_fluctuation");
+    ros::NodeHandle nh;
 
+    // Gazebo 话题
+    pub_wind_cmd = node.Advertise<gz::msgs::Vector3d>("/direction");
+    pub_wind_end = node.Advertise<gz::msgs::Vector3d>("/end_wind");
 
-  pub = node.Advertise<gz::msgs::Vector3d>("/direction");
-  pub2 = node.Advertise<gz::msgs::Vector3d>("/end_wind");
-  targetSub = nh.subscribe("/move_base_simple/goal", 1, &goal_Cb,
-                                 ros::TransportHints().tcpNoDelay()); 
-  endSub = nh.subscribe("/initialpose", 1, &initialpose_Cb,
-                                 ros::TransportHints().tcpNoDelay()); 
-                                 
-  time_sub= nh.subscribe("/how_long", 1, &time_Cb,
-                                 ros::TransportHints().tcpNoDelay()); 
-  howbig_sub= nh.subscribe("/howbig", 1, &howbig_Cb,
-                                 ros::TransportHints().tcpNoDelay()); 
-
-  odom_sub= nh.subscribe("/mavros/local_position/odom", 1, &odom_cb,
-                                 ros::TransportHints().tcpNoDelay()); 
-  delay_odom_pub = nh.advertise<nav_msgs::Odometry>("/delay_odom", 1);
-
-  ros::Timer timer = nh.createTimer(ros::Duration(0.1), timerCallback);
-  ros::Timer timer2 = nh.createTimer(ros::Duration(0.001), pub_delay_odom);
-
-  marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/wind_Area", 10);//写一个 接受2dgoal 接受一个发布一个对应位置的球   写到yaml 读取 下次用
-
-std::cout<< "in main" << std::endl;
-std::cerr << "2" << std::endl;
-        std::ifstream file(filename);
-        if (file.is_open()) {
-            std::cerr << "already have a prepared file " << std::endl;
-            std::string line;
-                    int line_index=0;
-                    while (std::getline(file, line)) {
-                        line_index++;
-                            std::istringstream ss(line);
-                            double cellValue;
-                            std::string delimiter;
-                            int index=0;
-                            windaera Area;
-                            // 以逗号为分隔符提取每个数字
-                            while (std::getline(ss, delimiter, ',')) {
-                                // 跳过前六个数字
-                                if (index == 0) {
-                                    index++;
-                                    Area.center_x=std::stod(delimiter);
-                                    continue;
-                                }
-                                if(index == 1){
-                                    index++;
-                                    Area.center_y=std::stod(delimiter);
-                                    continue;
-                                }
-                                if(index == 2){
-                                    index++;
-                                    Area.center_z=std::stod(delimiter);
-                                    continue;
-                                }
-                                if (index == 3) {
-                                    index++;
-                                    Area.wind_x=std::stod(delimiter);
-                                    continue;
-                                }
-                                if(index == 4){
-                                    index++;
-                                    Area.wind_y=std::stod(delimiter);
-                                    continue;
-                                }
-                                if(index == 5){
-                                    index++;
-                                    Area.orientation_x=std::stod(delimiter);
-                                    continue;
-                                }            
-                                if(index == 6){
-                                    index++;
-                                    Area.orientation_y=std::stod(delimiter);
-                                    continue;
-                                }    
-                                if(index == 7){
-                                    index++;
-                                    Area.orientation_z=std::stod(delimiter);
-
-                                    continue;
-                                }    
-                                if(index == 8){
-                                    index++;
-                                    Area.orientation_w=std::stod(delimiter);
-                                    Areas.push_back(Area);    
-                                    std::cout<<"   Areas.size()"<<Areas.size()<<std::endl;
-                                    break;
-                                }                                  
-
-                            }
-
-                    }
-                    if_have_prepared_file=true;
-                    file.close();
+    // ROS 订阅
+    targetSub = nh.subscribe("/goal", 1, &goal_Cb, ros::TransportHints().tcpNoDelay()); 
+    howbig_sub = nh.subscribe("/howbig", 1, &howbig_Cb, ros::TransportHints().tcpNoDelay()); 
+    odom_sub = nh.subscribe("/mavros/local_position/odom", 1, &odom_cb, ros::TransportHints().tcpNoDelay()); 
     
-        }
-        else{
-          std::cerr << "---!!!dont have a prepared file " << std::endl;
-          if_have_prepared_file=false;
-        }
+    // ROS 发布
+    delay_odom_pub = nh.advertise<nav_msgs::Odometry>("/delay_odom", 1);
+    marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/wind_Area", 10);
+    
+    // !!! 新增：发布给 PlotJuggler 的调试话题 !!!
+    pub_debug = nh.advertise<geometry_msgs::Vector3>("/wind_debug", 10);
 
-  ros::spin();
+    // 定时器
+    ros::Timer timer = nh.createTimer(ros::Duration(0.1), timerCallback);
+    ros::Timer timer2 = nh.createTimer(ros::Duration(0.001), pub_delay_odom);
+
+    std::cout << "--- Realtime Wind with PlotJuggler Debug Started ---" << std::endl;
+    std::cout << "Debug Topic: /wind_debug (x: deg, y: m/s)" << std::endl;
+
+    ros::spin();
+    return 0;
 }

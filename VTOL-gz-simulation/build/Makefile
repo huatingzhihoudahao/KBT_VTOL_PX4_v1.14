@@ -168,6 +168,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named run_pub_f_with_wind
+
+# Build rule for target.
+run_pub_f_with_wind: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 run_pub_f_with_wind
+.PHONY : run_pub_f_with_wind
+
+# fast build rule for target.
+run_pub_f_with_wind/fast:
+	$(MAKE) -f CMakeFiles/run_pub_f_with_wind.dir/build.make CMakeFiles/run_pub_f_with_wind.dir/build
+.PHONY : run_pub_f_with_wind/fast
+
+#=============================================================================
 # Target rules for targets named aero-test
 
 # Build rule for target.
@@ -1004,6 +1017,33 @@ src/run_pub_f.cpp.s:
 	$(MAKE) -f CMakeFiles/run_pub_f.dir/build.make CMakeFiles/run_pub_f.dir/src/run_pub_f.cpp.s
 .PHONY : src/run_pub_f.cpp.s
 
+src/run_pub_f_with_wind.o: src/run_pub_f_with_wind.cpp.o
+
+.PHONY : src/run_pub_f_with_wind.o
+
+# target to build an object file
+src/run_pub_f_with_wind.cpp.o:
+	$(MAKE) -f CMakeFiles/run_pub_f_with_wind.dir/build.make CMakeFiles/run_pub_f_with_wind.dir/src/run_pub_f_with_wind.cpp.o
+.PHONY : src/run_pub_f_with_wind.cpp.o
+
+src/run_pub_f_with_wind.i: src/run_pub_f_with_wind.cpp.i
+
+.PHONY : src/run_pub_f_with_wind.i
+
+# target to preprocess a source file
+src/run_pub_f_with_wind.cpp.i:
+	$(MAKE) -f CMakeFiles/run_pub_f_with_wind.dir/build.make CMakeFiles/run_pub_f_with_wind.dir/src/run_pub_f_with_wind.cpp.i
+.PHONY : src/run_pub_f_with_wind.cpp.i
+
+src/run_pub_f_with_wind.s: src/run_pub_f_with_wind.cpp.s
+
+.PHONY : src/run_pub_f_with_wind.s
+
+# target to generate assembly for a file
+src/run_pub_f_with_wind.cpp.s:
+	$(MAKE) -f CMakeFiles/run_pub_f_with_wind.dir/build.make CMakeFiles/run_pub_f_with_wind.dir/src/run_pub_f_with_wind.cpp.s
+.PHONY : src/run_pub_f_with_wind.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1012,6 +1052,7 @@ help:
 	@echo "... depend"
 	@echo "... install/strip"
 	@echo "... edit_cache"
+	@echo "... run_pub_f_with_wind"
 	@echo "... install"
 	@echo "... aero-test"
 	@echo "... ZhangFuAero"
@@ -1086,6 +1127,9 @@ help:
 	@echo "... src/run_pub_f.o"
 	@echo "... src/run_pub_f.i"
 	@echo "... src/run_pub_f.s"
+	@echo "... src/run_pub_f_with_wind.o"
+	@echo "... src/run_pub_f_with_wind.i"
+	@echo "... src/run_pub_f_with_wind.s"
 .PHONY : help
 
 

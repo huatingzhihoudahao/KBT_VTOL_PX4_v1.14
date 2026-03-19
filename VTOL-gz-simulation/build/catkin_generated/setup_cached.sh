@@ -9,5 +9,6 @@
 # modified environment variables
 export CMAKE_PREFIX_PATH="/home/cybird/下载/px4-n/px4-v1.14.0-stable/VTOL-gz-simulation/build/devel:$CMAKE_PREFIX_PATH"
 export LD_LIBRARY_PATH='/opt/ros/noetic/lib:/opt/ros/noetic/lib/x86_64-linux-gnu:/home/cybird/下载/acados/lib'
+export PATH='/opt/ros/noetic/bin:/home/cybird/.nvm/versions/node/v22.19.0/bin:/home/cybird/.cargo/bin:/opt/gcc-arm-none-eabi-9-2020-q2-update/bin:/home/cybird/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/games:/snap/bin'
 export ROSLISP_PACKAGE_DIRECTORIES='/home/cybird/下载/px4-n/px4-v1.14.0-stable/VTOL-gz-simulation/build/devel/share/common-lisp'
 export ROS_PACKAGE_PATH="/home/cybird/下载/px4-n/px4-v1.14.0-stable/VTOL-gz-simulation:$ROS_PACKAGE_PATH"
